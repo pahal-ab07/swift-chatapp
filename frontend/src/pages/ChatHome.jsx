@@ -49,14 +49,13 @@ const ChatHome = () => {
 
   useEffect(() => {
     axios.get("/api/user/people").then((res) => {
-      // console.log(res.data);
       const offlinePeopleArr = res?.data
         .filter((p) => p._id !== userDetails?._id)
         .filter((p) => !onlinePeople[p._id]);
 
       const offlinePeopleWithAvatar = offlinePeopleArr.map((p) => ({
         ...p,
-        avatarLink: p.avatarLink, // assuming avatarLink is a property of p
+        avatarLink: p.avatarLink,
       }));
 
       setOfflinePeople(
@@ -77,13 +76,11 @@ const ChatHome = () => {
       }
     };
 
-    // Add event listener for real-time messages
     if (ws) {
       ws.addEventListener("message", handleRealTimeMessage);
     }
 
     return () => {
-      // Remove the event listener when component unmounts
       if (ws) {
         ws.removeEventListener("message", handleRealTimeMessage);
       }
@@ -96,7 +93,7 @@ const ChatHome = () => {
       if (userId !== userDetails?._id) {
         people[userId] = {
           username,
-          avatarLink, // include avatarLink for online users
+          avatarLink,
         };
       }
     });
@@ -117,8 +114,6 @@ const ChatHome = () => {
 
   const sendMessage = (ev) => {
     if (ev) ev.preventDefault();
-    console.log("sending message");
-    console.log(newMessage, selectedUserId);
     ws.send(JSON.stringify({ text: newMessage, recipient: selectedUserId }));
     setNewMessage("");
     setMessages((prev) => [
@@ -153,7 +148,7 @@ const ChatHome = () => {
     }
   }, []);
   return (
-    <div className="flex min-h-screen  bg-background ">
+    <div className="flex h-screen w-screen bg-background overflow-hidden">
       <Nav />
       <OnlineUsersList
         onlinePeople={onlinePeople}
@@ -161,30 +156,31 @@ const ChatHome = () => {
         setSelectedUserId={setSelectedUserId}
         offlinePeople={offlinePeople}
       />
-      <section className="w-[71%] lg:w-[62%] relative pb-10">
-        {selectedUserId && (
-          <TopBar
-            selectedUserId={selectedUserId}
-            setSelectedUserId={setSelectedUserId}
-            offlinePeople={offlinePeople}
-            onlinePeople={onlinePeople}
-          />
-        )}
-
-        <ChatMessages
-          messages={messages}
-          userDetails={userDetails}
-          selectedUserId={selectedUserId}
-        />
-        <div className="absolute w-full bottom-0 flex justify-center items-center">
-          <MessageInputForm
-            newMessage={newMessage}
-            setNewMessage={setNewMessage}
-            sendMessage={sendMessage}
+      <main className="flex-1 flex flex-col h-full">
+        <section className="flex-1 flex flex-col h-full w-full bg-primary/80 rounded-none shadow-none relative overflow-hidden">
+          {selectedUserId && (
+            <TopBar
+              selectedUserId={selectedUserId}
+              setSelectedUserId={setSelectedUserId}
+              offlinePeople={offlinePeople}
+              onlinePeople={onlinePeople}
+            />
+          )}
+          <ChatMessages
+            messages={messages}
+            userDetails={userDetails}
             selectedUserId={selectedUserId}
           />
-        </div>
-      </section>
+          <div className="absolute w-full bottom-0 flex justify-center items-center p-4 bg-primary/90">
+            <MessageInputForm
+              newMessage={newMessage}
+              setNewMessage={setNewMessage}
+              sendMessage={sendMessage}
+              selectedUserId={selectedUserId}
+            />
+          </div>
+        </section>
+      </main>
     </div>
   );
 };

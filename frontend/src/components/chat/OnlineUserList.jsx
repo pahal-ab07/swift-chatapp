@@ -22,15 +22,15 @@ const OnlineUsersList = ({
   });
 
   return (
-    <section className="w-[29%] py-3 border-r px-2 lg:px-4 border-gray-700">
-      <div className="text-white flex items-center gap-2 p-1 px-2 lg:p-3 mt-1 mb-3 lg:mb-6 bg-primary w-[90%] mx-auto rounded-2xl">
+    <aside className="w-[90px] md:w-[220px] xl:w-[270px] py-4 px-2 md:px-4 bg-primary h-full border-r border-gray-800 flex flex-col">
+      <div className="flex items-center gap-2 p-2 mb-6 bg-dark rounded-xl shadow-md">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="w-6 h-6 hidden sm:block"
+          className="w-5 h-5 text-gray-400"
         >
           <path
             strokeLinecap="round"
@@ -38,19 +38,17 @@ const OnlineUsersList = ({
             d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
           />
         </svg>
-
         <input
           type="text"
           placeholder="Search..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-transparent outline-none"
+          className="w-full bg-transparent outline-none text-white placeholder-gray-400"
         />
       </div>
-      <div className="max-h-[85vh] overflow-auto no-scrollbar">
+      <ul className="flex-1 space-y-1 overflow-y-auto no-scrollbar pr-1">
         {filteredOnlinePeople.map((userId) => {
           const { username, avatarLink } = onlinePeople[userId];
-          console.log(userId)
           return (
             <Contact
               key={userId}
@@ -59,13 +57,12 @@ const OnlineUsersList = ({
               selectedUserId={selectedUserId}
               setSelectedUserId={setSelectedUserId}
               isOnline={true}
-              avatarLink={avatarLink} // Include avatarLink for online users
+              avatarLink={avatarLink}
             />
           );
         })}
         {filteredOfflinePeople.map((userId) => {
-          const { _id, firstName, lastName, avatarLink } =
-            offlinePeople[userId];
+          const { _id, firstName, lastName, avatarLink } = offlinePeople[userId];
           return (
             <Contact
               key={_id}
@@ -78,8 +75,8 @@ const OnlineUsersList = ({
             />
           );
         })}
-      </div>
-    </section>
+      </ul>
+    </aside>
   );
 };
 

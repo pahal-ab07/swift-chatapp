@@ -28,6 +28,7 @@
     "mongoose": "^8.15.2",
     "nodemailer": "^7.0.3",
     "nodemon": "^3.1.10",
+    "tailwind-scrollbar": "^4.0.2",
     "ws": "^8.18.2"
   }
 }

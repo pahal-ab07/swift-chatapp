@@ -12,13 +12,8 @@ const Contact = ({
   return (
     <li
       key={userId}
-      className={`${
-        selectedUserId === userId ? "bg-primary" : ""
-      } capitalize py-2 lg:py-3 px-2 lg:px-5  rounded-[1.3rem]  border-gray-300 hover:bg-primary flex flex-col lg:flex-row items-center gap-1 my-1.5 lg:gap-4 font-medium hover:cursor-pointer lg:my-3 text-white `}
-      onClick={() => {
-        setSelectedUserId(userId);
-        console.log(userId);
-      }}
+      className={`transition-all duration-150 flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer hover:bg-primarySecond/30 select-none shadow-sm border border-transparent ${selectedUserId === userId ? "bg-primarySecond/60 border-primarySecond" : "bg-dark/40"}`}
+      onClick={() => setSelectedUserId(userId)}
     >
       <Avatar
         userId={userId}
@@ -26,14 +21,9 @@ const Contact = ({
         isOnline={isOnline}
         avatarLink={avatarLink}
       />
-      <span className="text-xs lg:text-base text-center">{username}</span>
+      <span className="text-xs md:text-base text-white font-medium flex-1 truncate">{username}</span>
       {isOnline && (
-        <span
-          className={`text-xs rounded-full bg-green-500 px-2 py-0.5  z-20 
-        }`}
-        >
-          Active
-        </span>
+        <span className="text-xs rounded-full bg-green-500 px-2 py-0.5 text-white font-semibold">Active</span>
       )}
     </li>
   );
