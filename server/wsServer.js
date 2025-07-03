@@ -81,7 +81,16 @@ const createWebSocketServer = (server) => {
           if (client.userId === recipient) {
             client.send(
               JSON.stringify({
-                sender: connection.username,
+                sender: connection.userId,
+                text,
+                id: msgDoc._id,
+              })
+            );
+          }
+          if (client.userId === connection.userId && connection.userId !== recipient) {
+            client.send(
+              JSON.stringify({
+                sender: connection.userId,
                 text,
                 id: msgDoc._id,
               })
