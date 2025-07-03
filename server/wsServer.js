@@ -78,19 +78,11 @@ const createWebSocketServer = (server) => {
 
       if (recipient && text) {
         [...wss.clients].forEach((client) => {
-          if (client.userId === recipient) {
+          if (client.userId === recipient || client.userId === connection.userId) {
             client.send(
               JSON.stringify({
                 sender: connection.userId,
-                text,
-                id: msgDoc._id,
-              })
-            );
-          }
-          if (client.userId === connection.userId && connection.userId !== recipient) {
-            client.send(
-              JSON.stringify({
-                sender: connection.userId,
+                recipient,
                 text,
                 id: msgDoc._id,
               })

@@ -22,32 +22,43 @@ const ChatMessages = ({ messages, userDetails, selectedUserId }) => {
     >
       {!!selectedUserId && (
         <div className="flex flex-col gap-3">
-          {messages.map((message) => (
-            <div
-              key={message._id}
-              className={`max-w-[70%] md:max-w-[60%] break-words px-5 py-3 rounded-2xl shadow-md relative text-white text-base md:text-lg ${
-                message.sender !== userDetails._id
-                  ? "bg-primary self-start rounded-bl-none"
-                  : "bg-primarySecond self-end rounded-br-none"
-              }`}
-            >
-              {message.text}
+          {messages
+            .filter(
+              (message) =>
+                (message.sender === userDetails._id && message.recipient === selectedUserId) ||
+                (message.sender === selectedUserId && message.recipient === userDetails._id)
+            )
+            .map((message) => (
               <div
-                className={`absolute top-0 w-0 h-0 ${
+                key={message._id || message.id}
+                className={`max-w-[70%] md:max-w-[60%] break-words px-5 py-3 rounded-2xl shadow-md relative text-white text-base md:text-lg ${
                   message.sender !== userDetails._id
-                    ? "border-r-primary -left-4 border-r-[20px]"
-                    : "rounded-l-lg -right-4 border-l-primarySecond border-l-[20px]"
-                } border-b-[20px] border-b-transparent`}
-              ></div>
-            </div>
-          ))}
+                    ? "bg-primary self-start rounded-bl-none"
+                    : "bg-primarySecond self-end rounded-br-none"
+                }`}
+              >
+                {message.text}
+                <div
+                  className={`absolute top-0 w-0 h-0 ${
+                    message.sender !== userDetails._id
+                      ? "border-r-primary -left-4 border-r-[20px]"
+                      : "rounded-l-lg -right-4 border-l-primarySecond border-l-[20px]"
+                  } border-b-[20px] border-b-transparent`}
+                ></div>
+              </div>
+            ))}
         </div>
       )}
-      {selectedUserId && !messages.length && (
-        <div className="text-gray-400 flex items-center justify-center h-full text-lg">
-          Start a conversation
-        </div>
-      )}
+      {selectedUserId &&
+        !messages.filter(
+          (message) =>
+            (message.sender === userDetails._id && message.recipient === selectedUserId) ||
+            (message.sender === selectedUserId && message.recipient === userDetails._id)
+        ).length && (
+          <div className="text-gray-400 flex items-center justify-center h-full text-lg">
+            Start a conversation
+          </div>
+        )}
     </div>
   );
 };

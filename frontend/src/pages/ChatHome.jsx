@@ -70,16 +70,18 @@ const ChatHome = () => {
   useEffect(() => {
     const handleRealTimeMessage = (event) => {
       const messageData = JSON.parse(event.data);
-
       if ("text" in messageData) {
-        setMessages((prev) => [...prev, { ...messageData }]);
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === messageData.id || msg._id === messageData.id)) {
+            return prev;
+          }
+          return [...prev, { ...messageData }];
+        });
       }
     };
-
     if (ws) {
       ws.addEventListener("message", handleRealTimeMessage);
     }
-
     return () => {
       if (ws) {
         ws.removeEventListener("message", handleRealTimeMessage);
@@ -116,15 +118,6 @@ const ChatHome = () => {
     if (ev) ev.preventDefault();
     ws.send(JSON.stringify({ text: newMessage, recipient: selectedUserId }));
     setNewMessage("");
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: newMessage,
-        sender: userDetails._id,
-        recipient: selectedUserId,
-        _id: Date.now(),
-      },
-    ]);
   };
 
   useEffect(() => {
