@@ -36,11 +36,20 @@ const loginController = async (req, res) => {
       .status(200)
       .cookie("authToken", token, {
         httpOnly: false,
-        sameSite: "none",
-        secure: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       })
-      .send({ message: "Login successful", status: 200 });
+      .send({ 
+        message: "Login successful", 
+        status: 200,
+        user: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email
+        }
+      });
     return;
   } catch (error) {
     console.error("Error in loginController:", error);

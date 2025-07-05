@@ -30,8 +30,10 @@ const Login = () => {
         withCredentials: true,
       });
       if (response.status == 200) {
-        toast.success(response.message);
+        toast.success(response.data.message);
         setAuthenticated(true);
+        // Navigate to chat home after successful login
+        navigate("/chathome");
       }
     } catch (error) {
       if (
@@ -40,6 +42,8 @@ const Login = () => {
         error.response.status <= 500
       ) {
         toast.error(error.response.data.message);
+      } else {
+        toast.error("An error occurred during login");
       }
     }
   };
