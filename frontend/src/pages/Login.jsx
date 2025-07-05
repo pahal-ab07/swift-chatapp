@@ -26,16 +26,32 @@ const Login = () => {
     e.preventDefault();
     try {
       const url = "/api/user/login";
+      console.log("Attempting login...");
       const response = await axios.post(url, data, {
         withCredentials: true,
       });
+      console.log("Login response:", response);
+      console.log("Response headers:", response.headers);
+      
       if (response.status == 200) {
         toast.success(response.data.message);
+        console.log("Login successful, checking for cookies...");
+        
+        // Check if cookie was set
+        const token = document.cookie.split(';').find(row => row.startsWith('authToken='));
+        console.log("Cookie found:", token);
+        
+        // Store token in localStorage as backup if cookie doesn't work
+        if (response.data.user) {
+          localStorage.setItem("authToken", response.data.user._id);
+        }
+        
         setAuthenticated(true);
         // Navigate to chat home after successful login
         navigate("/chathome");
       }
     } catch (error) {
+      console.error("Login error:", error);
       if (
         error.response &&
         error.response.status >= 400 &&

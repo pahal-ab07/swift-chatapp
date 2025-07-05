@@ -4,8 +4,8 @@ const logoutController = async (req, res) => {
       .status(200)
       .clearCookie("authToken", {
         httpOnly: false,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: "none",
+        secure: true,
       })
       .send({ message: "Logged out successfully" });
   } catch (error) {

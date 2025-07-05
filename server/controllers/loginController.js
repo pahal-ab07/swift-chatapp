@@ -32,12 +32,20 @@ const loginController = async (req, res) => {
 
     // Generate authentication token and send successful login response
     const token = user.generateAuthToken();
+    console.log("Setting cookie with token:", token.substring(0, 20) + "...");
+    console.log("Cookie options:", {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+    
     res
       .status(200)
       .cookie("authToken", token, {
         httpOnly: false,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: "none",
+        secure: true,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       })
       .send({ 

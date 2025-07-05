@@ -10,8 +10,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(value);
   };
   const checkAuth = () => {
-    const token = Cookies.get("authToken");
+    const token = Cookies.get("authToken") || localStorage.getItem("authToken");
     console.log("Checking authentication...", token ? "Token found" : "No token");
+    console.log("All cookies:", document.cookie);
+    console.log("Cookies.get result:", token);
+    
     if (token) {
       console.log("Token exists. Setting authenticated to true.");
       setAuthenticated(true);
@@ -28,8 +31,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {
-      // Clear client-side cookie
+      // Clear client-side cookie and localStorage
       Cookies.remove("authToken");
+      localStorage.removeItem("authToken");
       setAuthenticated(false);
     }
   };
