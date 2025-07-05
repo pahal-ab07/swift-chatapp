@@ -30,7 +30,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:8000",
   "https://swifty-chatty-appy.onrender.com",
-  process.env.FRONTEND_URL // Your Vercel frontend URL
+  process.env.BASE_URL // Your Vercel frontend URL
 ].filter(Boolean);
 
 const corsOptions = {
