@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import Nav from "./Chat/Nav";
+import Nav from "./chat/Nav";
 import { useProfile } from "../context/profileContext";
 import SelectAvatar from "./SelectAvatar";
 

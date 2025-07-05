@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useProfile } from "../context/profileContext";
 import axios from "axios";
-import ChatMessages from "../components/Chat/ChatMessages";
-import MessageInputForm from "../components/Chat/MessageInputForm";
-import Nav from "../components/Chat/Nav";
-import OnlineUsersList from "../components/Chat/OnlineUserList";
-import TopBar from "../components/Chat/TopBar";
+import ChatMessages from "../components/chat/ChatMessages";
+import MessageInputForm from "../components/chat/MessageInputForm";
+import Nav from "../components/chat/Nav";
+import OnlineUsersList from "../components/chat/OnlineUserList";
+import TopBar from "../components/chat/TopBar";
 import { socketUrl } from "../../apiConfig";
 import { useAuth } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
