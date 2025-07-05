@@ -7,7 +7,6 @@ const userRoute = require("./routes/userRoute.js");
 const avatarRoute = require("./routes/avatarRoute.js");
 const cookieParser = require('cookie-parser')
 const createWebSocketServer = require("./wsServer.js");
-const path = require("path");
 
 // --- START Route controllers ---
 // const registerController = require('./controllers/registerController');
@@ -24,12 +23,15 @@ const path = require("path");
 connection();
 app.use(express.json());
 app.use(cookieParser());
+
 // CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:4000",
-    "https://swifty-chatty-appy.onrender.com"
-];
+  "http://localhost:3000",
+  "http://localhost:8000",
+  "https://swifty-chatty-appy.onrender.com",
+  process.env.FRONTEND_URL // Your Vercel frontend URL
+].filter(Boolean);
 
 const corsOptions = {
     origin: (origin, callback) => {
@@ -45,8 +47,12 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
 
+// API routes
 app.use("/api/user", userRoute);
 app.use("/api/avatar", avatarRoute);
 
@@ -68,14 +74,10 @@ app.use("/api/avatar", avatarRoute);
 // --- END Inlined Routes for Debugging ---
 
 const port = process.env.PORT || 8000;
-const server = app.listen(port, () => console.log(`Application Running on Port ${port}`));
-
-createWebSocketServer(server); 
-
-app.get('/*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'), (err) => {
-        if (err) {
-            console.error('Error sending file:', err);
-        }
-    });
+const server = app.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Allowed origins: ${allowedOrigins.join(', ')}`);
 });
+
+createWebSocketServer(server);
