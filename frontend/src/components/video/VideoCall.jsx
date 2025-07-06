@@ -41,6 +41,16 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         urls: twilioTurnUrls,
         username: twilioUsername,
         credential: twilioCredential
+      }] : []),
+      // Fallback free TURN servers (only if Twilio is not configured)
+      ...(twilioTurnUrls.length === 0 ? [{
+        urls: [
+          'turn:openrelay.metered.ca:80',
+          'turn:openrelay.metered.ca:443',
+          'turn:openrelay.metered.ca:443?transport=tcp'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
       }] : [])
     ],
     iceCandidatePoolSize: 10,
@@ -48,6 +58,17 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
     bundlePolicy: 'max-bundle',
     rtcpMuxPolicy: 'require'
   };
+
+  // Log TURN server configuration for debugging
+  useEffect(() => {
+    console.log('TURN Server Configuration:', {
+      twilioTurnUrls,
+      twilioUsername: twilioUsername ? '***' : 'not set',
+      twilioCredential: twilioCredential ? '***' : 'not set',
+      hasTurnServers: twilioTurnUrls.length > 0
+    });
+    console.log('Full ICE Server Configuration:', configuration.iceServers);
+  }, [twilioTurnUrls, twilioUsername, twilioCredential]);
 
   useEffect(() => {
     if (isOpen) {
@@ -229,6 +250,11 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
+          console.log('Current TURN configuration:', {
+            hasTurnServers: twilioTurnUrls.length > 0,
+            turnUrls: twilioTurnUrls,
+            hasCredentials: !!(twilioUsername && twilioCredential)
+          });
           
           if (state === 'failed' && retryCount < 3 && !isRetrying) {
             setIsRetrying(true);
@@ -245,7 +271,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
               setIsRetrying(false);
             }, 2000);
           } else if (retryCount >= 3) {
-            toast.error('Connection failed after multiple attempts. Please check your network.');
+            console.error('Connection failed after multiple attempts. TURN server may not be configured properly.');
+            toast.error('Connection failed. Please check TURN server configuration.');
             cleanupCall();
             onClose();
           } else {
@@ -255,6 +282,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           console.log('ICE connection established successfully');
           setRetryCount(0);
           setIsRetrying(false);
+        } else if (state === 'checking') {
+          console.log('ICE connection checking - attempting to establish connection...');
         }
       };
 
@@ -400,6 +429,11 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
+          console.log('Current TURN configuration:', {
+            hasTurnServers: twilioTurnUrls.length > 0,
+            turnUrls: twilioTurnUrls,
+            hasCredentials: !!(twilioUsername && twilioCredential)
+          });
           
           if (state === 'failed' && retryCount < 3 && !isRetrying) {
             setIsRetrying(true);
@@ -416,7 +450,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
               setIsRetrying(false);
             }, 2000);
           } else if (retryCount >= 3) {
-            toast.error('Connection failed after multiple attempts. Please check your network.');
+            console.error('Connection failed after multiple attempts. TURN server may not be configured properly.');
+            toast.error('Connection failed. Please check TURN server configuration.');
             cleanupCall();
             onClose();
           } else {
@@ -426,6 +461,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           console.log('ICE connection established successfully');
           setRetryCount(0);
           setIsRetrying(false);
+        } else if (state === 'checking') {
+          console.log('ICE connection checking - attempting to establish connection...');
         }
       };
 
