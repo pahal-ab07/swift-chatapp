@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from "./context/authContext";
 import axios from "axios";
 import ChatHome from "./pages/ChatHome";
 import { ProfileProvider } from "./context/profileContext";
+import { WebSocketProvider } from "./context/websocketContext";
+import { VideoCallProvider } from "./context/videoCallContext";
 import { useEffect } from "react";
 import Profile from "./components/Profile";
 import { baseUrl } from "../apiConfig";
@@ -73,8 +75,12 @@ function App() {
     <>
       <AuthProvider>
         <ProfileProvider>
-          <RouterProvider router={router} />
-          <Toaster />
+          <WebSocketProvider>
+            <VideoCallProvider>
+              <RouterProvider router={router} />
+              <Toaster />
+            </VideoCallProvider>
+          </WebSocketProvider>
         </ProfileProvider>
       </AuthProvider>
     </>

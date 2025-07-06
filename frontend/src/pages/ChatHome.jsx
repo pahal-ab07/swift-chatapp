@@ -1,36 +1,38 @@
 import React, { useEffect, useState } from "react";
 import { useProfile } from "../context/profileContext";
+import { useWebSocket } from "../context/websocketContext";
+import { useVideoCall } from "../context/videoCallContext";
 import axios from "axios";
 import ChatMessages from "../components/chat/ChatMessages";
 import MessageInputForm from "../components/chat/MessageInputForm";
 import Nav from "../components/chat/Nav";
 import OnlineUsersList from "../components/chat/OnlineUserList";
 import TopBar from "../components/chat/TopBar";
-import { socketUrl } from "../../apiConfig";
+import VideoCall from "../components/video/VideoCall";
 import { useAuth } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
 
 const ChatHome = () => {
-  const [ws, setWs] = useState(null);
   const [onlinePeople, setOnlinePeople] = useState({});
   const [offlinePeople, setOfflinePeople] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const { userDetails } = useProfile();
+  const { ws, sendMessage } = useWebSocket();
+  const { isInCall, setIsInCall, currentCallInfo } = useVideoCall();
   const { isAuthenticated, checkAuth } = useAuth();
   const navigate = useNavigate();
-  const connectToWebSocket = () => {
-    const ws = new WebSocket(socketUrl);
-    ws.addEventListener("message", handleMessage);
-    setWs(ws);
-  };
   useEffect(() => {
-    connectToWebSocket();
-    ws?.addEventListener("close", () => {
-      connectToWebSocket();
-    });
-  }, [userDetails, selectedUserId]);
+    if (ws) {
+      ws.addEventListener("message", handleMessage);
+    }
+    return () => {
+      if (ws) {
+        ws.removeEventListener("message", handleMessage);
+      }
+    };
+  }, [ws, selectedUserId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,9 +116,9 @@ const ChatHome = () => {
     }
   };
 
-  const sendMessage = (ev) => {
+  const sendChatMessage = (ev) => {
     if (ev) ev.preventDefault();
-    ws.send(JSON.stringify({ text: newMessage, recipient: selectedUserId }));
+    sendMessage({ text: newMessage, recipient: selectedUserId });
     setNewMessage("");
   };
 
@@ -168,12 +170,22 @@ const ChatHome = () => {
             <MessageInputForm
               newMessage={newMessage}
               setNewMessage={setNewMessage}
-              sendMessage={sendMessage}
+              sendMessage={sendChatMessage}
               selectedUserId={selectedUserId}
             />
           </div>
         </section>
       </main>
+
+      {/* Video Call Component */}
+      {isInCall && currentCallInfo && (
+        <VideoCall
+          isOpen={isInCall}
+          onClose={() => setIsInCall(false)}
+          selectedUserId={currentCallInfo.userId}
+          selectedUserName={currentCallInfo.userName}
+        />
+      )}
     </div>
   );
 };

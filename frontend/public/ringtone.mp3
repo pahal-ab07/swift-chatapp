@@ -1,0 +1,3 @@
+# This is a placeholder for the ringtone.mp3 file
+# In production, you would add an actual MP3 file here
+# For now, the IncomingCall component will work without audio 

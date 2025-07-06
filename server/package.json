@@ -9,7 +9,15 @@
     "build": "echo 'No build step required for Node.js'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["chat", "websocket", "real-time", "messaging", "nodejs", "express"],
+  "keywords": [
+    "chat",
+    "websocket",
+    "real-time",
+    "messaging",
+    "nodejs",
+    "express",
+    "video-call"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -23,6 +31,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.15.2",
     "nodemailer": "^7.0.3",
+    "socket.io": "^4.8.1",
     "ws": "^8.18.2"
   },
   "devDependencies": {
@@ -31,4 +40,4 @@
   "engines": {
     "node": ">=16.0.0"
   }
-} 
+}

@@ -6,6 +6,9 @@ const { User } = require("./models/userModel");
 const createWebSocketServer = (server) => {
   const wss = new ws.WebSocketServer({ server });
 
+  // Store connected users for video calls
+  const videoUsers = new Map();
+
   wss.on("connection", (connection, req) => {
     const notifyAboutOnlinePeople = async () => {
       const onlineUsers = await Promise.all(
@@ -25,6 +28,7 @@ const createWebSocketServer = (server) => {
       [...wss.clients].forEach((client) => {
         client.send(
           JSON.stringify({
+            type: 'online-users',
             online: onlineUsers,
           })
         );
@@ -63,36 +67,143 @@ const createWebSocketServer = (server) => {
           const { _id, firstName, lastName } = userData;
           connection.userId = _id;
           connection.username = `${firstName} ${lastName}`;
+          
+          // Store user for video calls
+          videoUsers.set(_id, {
+            socketId: connection,
+            userName: `${firstName} ${lastName}`
+          });
+
+          console.log('Server: User connected for video calls:', _id, `${firstName} ${lastName}`);
+          console.log('Server: Total video users:', videoUsers.size);
+
+          // Notify user is online for video calls
+          connection.send(JSON.stringify({
+            type: 'video-user-online',
+            userId: _id,
+            username: `${firstName} ${lastName}`
+          }));
         });
       }
     }
 
     connection.on("message", async (message) => {
-      const messageData = JSON.parse(message.toString());
-      const { recipient, text } = messageData;
-      const msgDoc = await Message.create({
-        sender: connection.userId,
-        recipient,
-        text,
-      });
-
-      if (recipient && text) {
-        [...wss.clients].forEach((client) => {
-          if (client.userId === recipient || client.userId === connection.userId) {
-            client.send(
-              JSON.stringify({
-                sender: connection.userId,
-                recipient,
-                text,
-                id: msgDoc._id,
-              })
-            );
+      try {
+        const messageData = JSON.parse(message.toString());
+        
+        // Handle different message types
+        if (messageData.type === 'video-call-offer') {
+          console.log('Server: Handling video call offer from', connection.userId, 'to', messageData.to);
+          console.log('Server: Available video users:', Array.from(videoUsers.keys()));
+          
+          // Handle video call offer
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            console.log('Server: Target user found, sending video call offer');
+            targetUser.socketId.send(JSON.stringify({
+              type: 'video-call-offer',
+              offer: messageData.offer,
+              from: connection.userId,
+              fromName: connection.username
+            }));
+          } else {
+            console.log('Server: Target user not found or not connected');
+            console.log('Server: Target user ID:', messageData.to);
+            console.log('Server: Target user in map:', targetUser);
+            
+            // Notify caller that target is not available
+            connection.send(JSON.stringify({
+              type: 'video-call-rejected',
+              from: messageData.to,
+              message: 'User is not available'
+            }));
           }
-        });
+        } else if (messageData.type === 'video-call-answer') {
+          console.log('Server: Handling video call answer from', connection.userId, 'to', messageData.to);
+          // Handle video call answer
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            console.log('Server: Sending video call answer to target user');
+            targetUser.socketId.send(JSON.stringify({
+              type: 'video-call-answer',
+              answer: messageData.answer,
+              from: connection.userId
+            }));
+          } else {
+            console.log('Server: Target user not found for answer');
+          }
+        } else if (messageData.type === 'ice-candidate') {
+          console.log('Server: Handling ICE candidate from', connection.userId, 'to', messageData.to);
+          // Handle ICE candidate
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            console.log('Server: Sending ICE candidate to target user');
+            targetUser.socketId.send(JSON.stringify({
+              type: 'ice-candidate',
+              candidate: messageData.candidate,
+              from: connection.userId
+            }));
+          } else {
+            console.log('Server: Target user not found for ICE candidate');
+          }
+        } else if (messageData.type === 'video-call-rejected') {
+          // Handle call rejection
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            targetUser.socketId.send(JSON.stringify({
+              type: 'video-call-rejected',
+              from: connection.userId,
+              message: messageData.message || 'Call was rejected'
+            }));
+          }
+        } else if (messageData.type === 'end-call') {
+          // Handle call end
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            targetUser.socketId.send(JSON.stringify({
+              type: 'call-ended',
+              from: connection.userId
+            }));
+          }
+        } else {
+          // Handle regular chat messages
+          const { recipient, text } = messageData;
+          const msgDoc = await Message.create({
+            sender: connection.userId,
+            recipient,
+            text,
+          });
+
+          if (recipient && text) {
+            [...wss.clients].forEach((client) => {
+              if (client.userId === recipient || client.userId === connection.userId) {
+                client.send(
+                  JSON.stringify({
+                    type: 'chat-message',
+                    sender: connection.userId,
+                    recipient,
+                    text,
+                    id: msgDoc._id,
+                  })
+                );
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error handling message:', error);
       }
     });
+
+    connection.on("close", () => {
+      // Remove user from video users when they disconnect
+      if (connection.userId) {
+        videoUsers.delete(connection.userId);
+      }
+      notifyAboutOnlinePeople();
+    });
+
     notifyAboutOnlinePeople();
-    // Sending online user list to all clients
   });
 };
 

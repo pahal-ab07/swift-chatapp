@@ -1,4 +1,5 @@
 import React from 'react'
+import VideoCallButton from '../video/VideoCallButton';
 
 const TopBar = ({
   setSelectedUserId,
@@ -34,12 +35,23 @@ const TopBar = ({
           ) : (
             <>
               <span>{offlinePeople[selectedUserId].firstName}</span>
-
               <span className="h-3 rounded-full aspect-square bg-gray-400"></span>
             </>
           )}
         </>
       }
+      
+      {/* Video Call Button */}
+      <div className="ml-auto">
+        <VideoCallButton 
+          selectedUserId={selectedUserId}
+          selectedUserName={
+            onlinePeople[selectedUserId] 
+              ? onlinePeople[selectedUserId].username 
+              : offlinePeople[selectedUserId]?.firstName
+          }
+        />
+      </div>
     </div>
   );
 };

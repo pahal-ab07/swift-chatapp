@@ -28,6 +28,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://localhost:4000",
   "http://localhost:8000",
   "https://swifty-chatty-appy.onrender.com",
   process.env.BASE_URL // Your Vercel frontend URL
