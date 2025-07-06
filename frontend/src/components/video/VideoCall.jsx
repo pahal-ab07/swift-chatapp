@@ -28,17 +28,9 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const { ws, sendMessage } = useWebSocket();
   const { currentCallInfo } = useVideoCall();
 
-  // WebRTC configuration with working TURN servers
+  // WebRTC configuration with working ICE servers
   const configuration = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      // Working TURN servers (Twilio if configured, otherwise free servers)
-      ...getWorkingTurnServers()
-    ],
+    iceServers: getWorkingTurnServers(),
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all',
     bundlePolicy: 'max-bundle',

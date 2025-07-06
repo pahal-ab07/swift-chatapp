@@ -11,23 +11,21 @@ if (import.meta.env.VITE_NODE_ENV === "production") {
   socketUrl = "ws://localhost:4000";
 }
 
-// Function to get working TURN servers (multiple reliable free TURN servers)
+// Function to get working ICE servers (STUN + TURN)
 const getWorkingTurnServers = () => {
   return [
+    // STUN servers (for direct connections when possible)
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    // TURN server (for NAT traversal)
     {
       urls: [
         'turn:openrelay.metered.ca:80',
         'turn:openrelay.metered.ca:443',
         'turn:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: [
-        'turn:relay.metered.ca:80',
-        'turn:relay.metered.ca:443',
-        'turn:relay.metered.ca:443?transport=tcp'
       ],
       username: 'openrelayproject',
       credential: 'openrelayproject'
