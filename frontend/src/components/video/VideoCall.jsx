@@ -68,7 +68,64 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       hasTurnServers: twilioTurnUrls.length > 0
     });
     console.log('Full ICE Server Configuration:', configuration.iceServers);
+    
+    // Log detailed TURN server info for debugging
+    if (twilioTurnUrls.length > 0) {
+      console.log('🔍 TURN Server Details:');
+      twilioTurnUrls.forEach((url, index) => {
+        console.log(`  TURN ${index + 1}: ${url}`);
+      });
+      console.log(`  Username: ${twilioUsername}`);
+      console.log(`  Credential: ${twilioCredential ? '***' : 'not set'}`);
+      
+      // Test TURN server connectivity
+      testTurnServer();
+    } else {
+      console.warn('⚠️ No TURN servers configured!');
+    }
   }, [twilioTurnUrls, twilioUsername, twilioCredential]);
+
+  // Test TURN server connectivity
+  const testTurnServer = async () => {
+    try {
+      console.log('🧪 Testing TURN server connectivity...');
+      const testConnection = new RTCPeerConnection({
+        iceServers: [{
+          urls: twilioTurnUrls,
+          username: twilioUsername,
+          credential: twilioCredential
+        }]
+      });
+
+      let turnCandidateFound = false;
+      testConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log('Test ICE candidate:', event.candidate.candidate);
+          if (event.candidate.candidate.includes('typ relay')) {
+            console.log('✅ TURN candidate generated in test!');
+            turnCandidateFound = true;
+          }
+        } else {
+          console.log('Test ICE gathering completed');
+          if (!turnCandidateFound) {
+            console.error('❌ No TURN candidates generated in test!');
+            console.error('This indicates a problem with your TURN server configuration.');
+          }
+        }
+      };
+
+      // Create a dummy offer to trigger ICE gathering
+      const offer = await testConnection.createOffer();
+      await testConnection.setLocalDescription(offer);
+      
+      // Clean up after 5 seconds
+      setTimeout(() => {
+        testConnection.close();
+      }, 5000);
+    } catch (error) {
+      console.error('Error testing TURN server:', error);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -323,7 +380,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           setTimeout(() => {
             if (peerConnection.iceConnectionState === 'checking') {
               console.warn('ICE connection stuck in checking state for too long');
-              toast.info('Connection taking longer than expected...');
+              toast('Connection taking longer than expected...');
             }
           }, 10000); // 10 second timeout
         }
@@ -544,7 +601,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           setTimeout(() => {
             if (peerConnection.iceConnectionState === 'checking') {
               console.warn('ICE connection stuck in checking state for too long');
-              toast.info('Connection taking longer than expected...');
+              toast('Connection taking longer than expected...');
             }
           }, 10000); // 10 second timeout
         }
