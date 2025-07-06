@@ -11,6 +11,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isRemoteVideoOff, setIsRemoteVideoOff] = useState(false);
   const [callStatus, setCallStatus] = useState('idle'); // idle, calling, connected, ended
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -464,56 +465,49 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
 
   const toggleMute = () => {
     if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
-      }
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted(!isMuted);
     }
   };
 
   const toggleVideo = () => {
     if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoOff(!videoTrack.enabled);
-      }
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsVideoOff(!isVideoOff);
     }
   };
 
   const toggleScreenShare = async () => {
     try {
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: true
-        });
-        
-        const videoTrack = screenStream.getVideoTracks()[0];
-        const sender = peerConnectionRef.current.getSenders().find(s => 
-          s.track?.kind === 'video'
-        );
-        
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        const sender = peerConnectionRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender) {
-          sender.replaceTrack(videoTrack);
+          sender.replaceTrack(screenTrack);
         }
-        
         setIsScreenSharing(true);
+        screenTrack.onended = async () => {
+          // Switch back to camera
+          const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const cameraTrack = cameraStream.getVideoTracks()[0];
+          if (sender) {
+            sender.replaceTrack(cameraTrack);
+          }
+          setIsScreenSharing(false);
+        };
       } else {
-        // Switch back to camera
-        const cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
-        
-        const videoTrack = cameraStream.getVideoTracks()[0];
-        const sender = peerConnectionRef.current.getSenders().find(s => 
-          s.track?.kind === 'video'
-        );
-        
+        // Stop screen sharing, switch back to camera
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const cameraTrack = cameraStream.getVideoTracks()[0];
+        const sender = peerConnectionRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender) {
-          sender.replaceTrack(videoTrack);
+          sender.replaceTrack(cameraTrack);
         }
-        
         setIsScreenSharing(false);
       }
     } catch (error) {
@@ -521,6 +515,33 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       toast.error('Failed to toggle screen sharing');
     }
   };
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
+    }
+  }, [localStream]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      if (remoteVideoRef.current.srcObject !== remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        const playPromise = remoteVideoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            console.error('Error playing remote video:', e);
+            if (e.name === 'AbortError') {
+              console.log('Video play was interrupted, this is normal during connection setup');
+            } else {
+              toast.error('Failed to display remote video');
+            }
+          });
+        }
+      }
+    }
+  }, [remoteStream]);
 
   if (!isOpen) return null;
 
@@ -547,23 +568,33 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         {/* Video Container */}
         <div className="flex-1 relative bg-gray-800 rounded-lg overflow-hidden mb-4">
           {/* Remote Video */}
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-            style={{ minHeight: '400px' }}
-          />
-          
-          {/* Local Video */}
-          <div className="absolute top-4 right-4 w-64 h-48 bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-600">
+          {callStatus === 'connected' && remoteStream && remoteStream.getTracks().length > 0 ? (
             <video
-              ref={localVideoRef}
+              ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted
               className="w-full h-full object-cover"
+              style={{ minHeight: '400px' }}
             />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-black bg-opacity-50">
+              <span className="text-white">Remote Video Off</span>
+            </div>
+          )}
+          
+          {/* Local Video */}
+          <div className="absolute top-4 right-4 w-64 h-48 bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-600 flex items-center justify-center">
+            {isVideoOff ? (
+              <span className="text-white">Video Off</span>
+            ) : (
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
 
           {/* Video Status Indicators */}
@@ -668,6 +699,19 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
               </button>
             </>
           )}
+        </div>
+
+        {/* Additional Controls */}
+        <div className="flex gap-4 justify-center my-4">
+          <button onClick={toggleMute} className="px-4 py-2 bg-gray-700 text-white rounded">
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+          <button onClick={toggleVideo} className="px-4 py-2 bg-gray-700 text-white rounded">
+            {isVideoOff ? 'Show Video' : 'Hide Video'}
+          </button>
+          <button onClick={toggleScreenShare} className="px-4 py-2 bg-gray-700 text-white rounded">
+            {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
+          </button>
         </div>
       </div>
     </div>
