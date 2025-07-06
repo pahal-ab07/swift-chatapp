@@ -42,7 +42,11 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all',
     bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require'
+    rtcpMuxPolicy: 'require',
+    // Add more aggressive connection settings
+    iceServersPolicy: 'all',
+    // Force connection even in restrictive networks
+    iceTransportPolicy: 'all'
   };
 
   // Log TURN server configuration for debugging
@@ -253,9 +257,30 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
               }
             });
             console.log('Final ICE candidate counts:', candidateCount);
+            
+            // If no TURN candidates, try to force ICE restart
+            if (candidateCount.relay === 0) {
+              console.warn('No TURN candidates generated, attempting ICE restart...');
+              setTimeout(() => {
+                try {
+                  peerConnection.restartIce();
+                  console.log('ICE restart triggered');
+                } catch (error) {
+                  console.error('Failed to restart ICE:', error);
+                }
+              }, 1000);
+            }
           });
         }
       };
+
+      // Force ICE gathering to complete after a timeout
+      setTimeout(() => {
+        if (peerConnection.iceGatheringState !== 'complete') {
+          console.log('Forcing ICE gathering to complete...');
+          peerConnection.restartIce();
+        }
+      }, 5000);
 
       // Handle ICE connection state changes
       peerConnection.oniceconnectionstatechange = () => {
@@ -473,9 +498,30 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
               }
             });
             console.log('Final ICE candidate counts:', candidateCount);
+            
+            // If no TURN candidates, try to force ICE restart
+            if (candidateCount.relay === 0) {
+              console.warn('No TURN candidates generated, attempting ICE restart...');
+              setTimeout(() => {
+                try {
+                  peerConnection.restartIce();
+                  console.log('ICE restart triggered');
+                } catch (error) {
+                  console.error('Failed to restart ICE:', error);
+                }
+              }, 1000);
+            }
           });
         }
       };
+
+      // Force ICE gathering to complete after a timeout
+      setTimeout(() => {
+        if (peerConnection.iceGatheringState !== 'complete') {
+          console.log('Forcing ICE gathering to complete...');
+          peerConnection.restartIce();
+        }
+      }, 5000);
 
       // Handle ICE connection state changes
       peerConnection.oniceconnectionstatechange = () => {

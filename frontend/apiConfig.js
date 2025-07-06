@@ -11,17 +11,28 @@ if (import.meta.env.VITE_NODE_ENV === "production") {
   socketUrl = "ws://localhost:4000";
 }
 
-// Function to get working TURN servers (Google's free TURN servers)
+// Function to get working TURN servers (multiple reliable free TURN servers)
 const getWorkingTurnServers = () => {
-  return [{
-    urls: [
-      'turn:openrelay.metered.ca:80',
-      'turn:openrelay.metered.ca:443',
-      'turn:openrelay.metered.ca:443?transport=tcp'
-    ],
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  }];
+  return [
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: [
+        'turn:relay.metered.ca:80',
+        'turn:relay.metered.ca:443',
+        'turn:relay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ];
 };
 
 export { baseUrl, socketUrl, getWorkingTurnServers };
