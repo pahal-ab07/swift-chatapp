@@ -234,7 +234,11 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           });
           sendMessage({
             type: 'ice-candidate',
-            candidate: event.candidate,
+            candidate: {
+              candidate: event.candidate.candidate,
+              sdpMid: event.candidate.sdpMid,
+              sdpMLineIndex: event.candidate.sdpMLineIndex
+            },
             to: selectedUserId
           });
         } else {
@@ -413,7 +417,11 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           });
           sendMessage({
             type: 'ice-candidate',
-            candidate: event.candidate,
+            candidate: {
+              candidate: event.candidate.candidate,
+              sdpMid: event.candidate.sdpMid,
+              sdpMLineIndex: event.candidate.sdpMLineIndex
+            },
             to: data.from
           });
         } else {
@@ -571,18 +579,27 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const handleIceCandidate = async (data) => {
     try {
       console.log('Received ICE candidate from:', data.from);
-      console.log('Candidate details:', {
-        type: data.candidate.type,
-        protocol: data.candidate.protocol,
-        address: data.candidate.address,
-        port: data.candidate.port
-      });
       
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.addIceCandidate(data.candidate);
+      if (peerConnectionRef.current && data.candidate) {
+        // Reconstruct the RTCIceCandidate object from the received data
+        const candidate = new RTCIceCandidate({
+          candidate: data.candidate.candidate,
+          sdpMid: data.candidate.sdpMid,
+          sdpMLineIndex: data.candidate.sdpMLineIndex
+        });
+        
+        console.log('Reconstructed ICE candidate:', {
+          type: candidate.type,
+          protocol: candidate.protocol,
+          address: candidate.address,
+          port: candidate.port,
+          candidate: candidate.candidate
+        });
+        
+        await peerConnectionRef.current.addIceCandidate(candidate);
         console.log('ICE candidate added successfully');
       } else {
-        console.error('Peer connection not available for ICE candidate');
+        console.error('Peer connection not available for ICE candidate or candidate data missing');
       }
     } catch (error) {
       console.error('Error adding ICE candidate:', error);
