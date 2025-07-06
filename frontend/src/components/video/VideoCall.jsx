@@ -16,6 +16,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [iceConnectionState, setIceConnectionState] = useState('new');
   const [peerConnectionState, setPeerConnectionState] = useState('new');
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
@@ -25,12 +27,15 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const { ws, sendMessage } = useWebSocket();
   const { currentCallInfo } = useVideoCall();
 
-  // WebRTC configuration with TURN servers for better connectivity
+  // WebRTC configuration with free TURN servers for testing
   const configuration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      // Add TURN servers for better connectivity across different networks
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      // Free TURN server
       {
         urls: [
           'turn:openrelay.metered.ca:80',
@@ -41,7 +46,10 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         credential: 'openrelayproject'
       }
     ],
-    iceCandidatePoolSize: 10
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
   };
 
   useEffect(() => {
@@ -199,12 +207,20 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       // Handle ICE candidates
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('Sending ICE candidate to:', selectedUserId);
+          console.log('Generated ICE candidate:', {
+            type: event.candidate.type,
+            protocol: event.candidate.protocol,
+            address: event.candidate.address,
+            port: event.candidate.port,
+            usernameFragment: event.candidate.usernameFragment
+          });
           sendMessage({
             type: 'ice-candidate',
             candidate: event.candidate,
             to: selectedUserId
           });
+        } else {
+          console.log('ICE candidate gathering completed');
         }
       };
 
@@ -216,12 +232,32 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
-          toast.error('Connection lost. Please try again.');
-          // Optionally attempt to restart ICE
-          if (state === 'failed') {
-            console.log('Attempting to restart ICE...');
-            peerConnection.restartIce();
+          
+          if (state === 'failed' && retryCount < 3 && !isRetrying) {
+            setIsRetrying(true);
+            setRetryCount(prev => prev + 1);
+            console.log(`Attempting to restart ICE (attempt ${retryCount + 1}/3)...`);
+            
+            setTimeout(() => {
+              try {
+                peerConnection.restartIce();
+                toast.info(`Retrying connection... (${retryCount + 1}/3)`);
+              } catch (error) {
+                console.error('Failed to restart ICE:', error);
+              }
+              setIsRetrying(false);
+            }, 2000);
+          } else if (retryCount >= 3) {
+            toast.error('Connection failed after multiple attempts. Please check your network.');
+            cleanupCall();
+            onClose();
+          } else {
+            toast.error('Connection lost. Please try again.');
           }
+        } else if (state === 'connected' || state === 'completed') {
+          console.log('ICE connection established successfully');
+          setRetryCount(0);
+          setIsRetrying(false);
         }
       };
 
@@ -342,12 +378,20 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       // Handle ICE candidates
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('Sending ICE candidate to:', data.from);
+          console.log('Generated ICE candidate:', {
+            type: event.candidate.type,
+            protocol: event.candidate.protocol,
+            address: event.candidate.address,
+            port: event.candidate.port,
+            usernameFragment: event.candidate.usernameFragment
+          });
           sendMessage({
             type: 'ice-candidate',
             candidate: event.candidate,
             to: data.from
           });
+        } else {
+          console.log('ICE candidate gathering completed');
         }
       };
 
@@ -359,12 +403,32 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
-          toast.error('Connection lost. Please try again.');
-          // Optionally attempt to restart ICE
-          if (state === 'failed') {
-            console.log('Attempting to restart ICE...');
-            peerConnection.restartIce();
+          
+          if (state === 'failed' && retryCount < 3 && !isRetrying) {
+            setIsRetrying(true);
+            setRetryCount(prev => prev + 1);
+            console.log(`Attempting to restart ICE (attempt ${retryCount + 1}/3)...`);
+            
+            setTimeout(() => {
+              try {
+                peerConnection.restartIce();
+                toast.info(`Retrying connection... (${retryCount + 1}/3)`);
+              } catch (error) {
+                console.error('Failed to restart ICE:', error);
+              }
+              setIsRetrying(false);
+            }, 2000);
+          } else if (retryCount >= 3) {
+            toast.error('Connection failed after multiple attempts. Please check your network.');
+            cleanupCall();
+            onClose();
+          } else {
+            toast.error('Connection lost. Please try again.');
           }
+        } else if (state === 'connected' || state === 'completed') {
+          console.log('ICE connection established successfully');
+          setRetryCount(0);
+          setIsRetrying(false);
         }
       };
 
@@ -473,6 +537,13 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const handleIceCandidate = async (data) => {
     try {
       console.log('Received ICE candidate from:', data.from);
+      console.log('Candidate details:', {
+        type: data.candidate.type,
+        protocol: data.candidate.protocol,
+        address: data.candidate.address,
+        port: data.candidate.port
+      });
+      
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.addIceCandidate(data.candidate);
         console.log('ICE candidate added successfully');
@@ -764,7 +835,13 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         <div className="text-center mb-4">
           <div className="text-sm text-gray-300">
             ICE: {iceConnectionState} | Peer: {peerConnectionState}
+            {retryCount > 0 && <span className="ml-2">| Retries: {retryCount}/3</span>}
           </div>
+          {isRetrying && (
+            <div className="text-yellow-400 text-sm mt-1">
+              Retrying connection...
+            </div>
+          )}
           {(iceConnectionState === 'failed' || peerConnectionState === 'failed') && (
             <div className="text-red-400 text-sm mt-1">
               Connection failed. Please check your network and try again.
