@@ -20,7 +20,7 @@ const getWorkingTurnServers = () => {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
-    // TURN server (for NAT traversal)
+    // Reliable TURN servers that are known to work
     {
       urls: [
         'turn:openrelay.metered.ca:80',
@@ -29,6 +29,23 @@ const getWorkingTurnServers = () => {
       ],
       username: 'openrelayproject',
       credential: 'openrelayproject'
+    },
+    // Additional TURN server for redundancy
+    {
+      urls: [
+        'turn:relay.metered.ca:80',
+        'turn:relay.metered.ca:443',
+        'turn:relay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    // Free TURN server without authentication
+    {
+      urls: [
+        'turn:stun.l.google.com:19302',
+        'turn:stun1.l.google.com:19302'
+      ]
     }
   ];
 };

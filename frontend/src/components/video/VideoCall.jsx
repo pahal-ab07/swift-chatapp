@@ -19,6 +19,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [peerConnectionState, setPeerConnectionState] = useState('new');
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [turnServersWorking, setTurnServersWorking] = useState(true);
+  const [currentConfig, setCurrentConfig] = useState(configuration);
 
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
@@ -38,7 +40,24 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
     // Add more aggressive connection settings
     iceServersPolicy: 'all',
     // Force connection even in restrictive networks
-    iceTransportPolicy: 'all'
+    iceTransportPolicy: 'all',
+    // Add connection constraints for better compatibility
+    iceCandidatePoolSize: 20
+  };
+
+  // Fallback configuration for when TURN servers fail
+  const fallbackConfiguration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
   };
 
   // Log TURN server configuration for debugging
@@ -242,7 +261,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       setCallStatus('calling');
       
       // Create peer connection
-      const peerConnection = new RTCPeerConnection(configuration);
+      const peerConnection = new RTCPeerConnection(currentConfig);
       peerConnectionRef.current = peerConnection;
 
       // Add local stream
@@ -290,17 +309,20 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             });
             console.log('Final ICE candidate counts:', candidateCount);
             
-            // If no TURN candidates, try to force ICE restart
-            if (candidateCount.relay === 0) {
-              console.warn('No TURN candidates generated, attempting ICE restart...');
+            // If no TURN candidates and we're using TURN servers, switch to fallback
+            if (candidateCount.relay === 0 && turnServersWorking && retryCount === 0) {
+              console.warn('No TURN candidates generated, switching to STUN-only fallback...');
+              setTurnServersWorking(false);
+              setCurrentConfig(fallbackConfiguration);
+              setRetryCount(prev => prev + 1);
+              
+              // Restart the call with fallback configuration
               setTimeout(() => {
-                try {
-                  peerConnection.restartIce();
-                  console.log('ICE restart triggered');
-                } catch (error) {
-                  console.error('Failed to restart ICE:', error);
-                }
+                cleanupCall();
+                startCall();
               }, 1000);
+            } else if (candidateCount.relay === 0 && !turnServersWorking) {
+              console.log('Using STUN-only configuration - this may work for local networks');
             }
           });
         }
@@ -483,7 +505,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       setCallStatus('calling');
       
       // Create peer connection
-      const peerConnection = new RTCPeerConnection(configuration);
+      const peerConnection = new RTCPeerConnection(currentConfig);
       peerConnectionRef.current = peerConnection;
 
       // Add local stream
@@ -531,17 +553,20 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             });
             console.log('Final ICE candidate counts:', candidateCount);
             
-            // If no TURN candidates, try to force ICE restart
-            if (candidateCount.relay === 0) {
-              console.warn('No TURN candidates generated, attempting ICE restart...');
+            // If no TURN candidates and we're using TURN servers, switch to fallback
+            if (candidateCount.relay === 0 && turnServersWorking && retryCount === 0) {
+              console.warn('No TURN candidates generated, switching to STUN-only fallback...');
+              setTurnServersWorking(false);
+              setCurrentConfig(fallbackConfiguration);
+              setRetryCount(prev => prev + 1);
+              
+              // Restart the call with fallback configuration
               setTimeout(() => {
-                try {
-                  peerConnection.restartIce();
-                  console.log('ICE restart triggered');
-                } catch (error) {
-                  console.error('Failed to restart ICE:', error);
-                }
+                cleanupCall();
+                startCall();
               }, 1000);
+            } else if (candidateCount.relay === 0 && !turnServersWorking) {
+              console.log('Using STUN-only configuration - this may work for local networks');
             }
           });
         }
