@@ -53,7 +53,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   useEffect(() => {
     const turnServers = getWorkingTurnServers();
     console.log('TURN Server Configuration:', {
-      hasTurnServers: turnServers.length > 0
+      hasTurnServers: turnServers.length > 0,
+      turnServerCount: turnServers.length
     });
     console.log('Full ICE Server Configuration:', configuration.iceServers);
     
@@ -61,10 +62,49 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
     if (turnServers.length > 0) {
       console.log('🔍 TURN Server Details:');
       turnServers.forEach((server, index) => {
-        console.log(`  TURN ${index + 1}:`, server);
+        console.log(`  TURN ${index + 1}:`, {
+          urls: server.urls,
+          username: server.username,
+          hasCredential: !!server.credential
+        });
       });
+      
+      // Test TURN server connectivity
+      testTurnConnectivity();
     }
   }, []);
+
+  // Test TURN server connectivity
+  const testTurnConnectivity = () => {
+    console.log('🧪 Testing TURN server connectivity...');
+    const testConfig = {
+      iceServers: getWorkingTurnServers()
+    };
+    
+    const testPC = new RTCPeerConnection(testConfig);
+    let turnCandidateFound = false;
+    
+    testPC.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('Test candidate:', event.candidate.candidate);
+        if (event.candidate.candidate.includes('typ relay')) {
+          console.log('✅ TURN candidate found in test!');
+          turnCandidateFound = true;
+        }
+      } else {
+        console.log('Test ICE gathering completed');
+        if (!turnCandidateFound) {
+          console.warn('⚠️ No TURN candidates in test - servers may be unreachable');
+        }
+        testPC.close();
+      }
+    };
+    
+    // Create a dummy offer to trigger ICE gathering
+    testPC.createOffer()
+      .then(offer => testPC.setLocalDescription(offer))
+      .catch(err => console.error('Test error:', err));
+  };
 
   useEffect(() => {
     if (isOpen) {
