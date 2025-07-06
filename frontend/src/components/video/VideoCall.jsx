@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useProfile } from '../../context/profileContext';
 import { useWebSocket } from '../../context/websocketContext';
 import { useVideoCall } from '../../context/videoCallContext';
+import { twilioTurnUrls, twilioUsername, twilioCredential } from '../../../apiConfig';
 
 const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [localStream, setLocalStream] = useState(null);
@@ -27,7 +28,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const { ws, sendMessage } = useWebSocket();
   const { currentCallInfo } = useVideoCall();
 
-  // WebRTC configuration with free TURN servers for testing
+  // WebRTC configuration with Twilio TURN servers
   const configuration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -35,16 +36,12 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // Free TURN server
-      {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp'
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
+      // Twilio TURN servers
+      ...(twilioTurnUrls.length > 0 ? [{
+        urls: twilioTurnUrls,
+        username: twilioUsername,
+        credential: twilioCredential
+      }] : [])
     ],
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all',
