@@ -6,30 +6,6 @@ import { useVideoCall } from '../../context/videoCallContext';
 import { getWorkingTurnServers } from '../../../apiConfig';
 
 const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
-  const [isCallActive, setIsCallActive] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isRemoteVideoOff, setIsRemoteVideoOff] = useState(false);
-  const [callStatus, setCallStatus] = useState('idle'); // idle, calling, connected, ended
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [iceConnectionState, setIceConnectionState] = useState('new');
-  const [peerConnectionState, setPeerConnectionState] = useState('new');
-  const [retryCount, setRetryCount] = useState(0);
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [turnServersWorking, setTurnServersWorking] = useState(true);
-  const [currentConfig, setCurrentConfig] = useState(configuration);
-
-  const localVideoRef = useRef();
-  const remoteVideoRef = useRef();
-  const peerConnectionRef = useRef();
-  const localStreamRef = useRef();
-  const { userDetails } = useProfile();
-  const { ws, sendMessage } = useWebSocket();
-  const { currentCallInfo } = useVideoCall();
-
   // WebRTC configuration with working ICE servers
   const configuration = {
     iceServers: getWorkingTurnServers(),
@@ -60,62 +36,29 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
     rtcpMuxPolicy: 'require'
   };
 
-  // Log TURN server configuration for debugging
-  useEffect(() => {
-    const turnServers = getWorkingTurnServers();
-    console.log('TURN Server Configuration:', {
-      hasTurnServers: turnServers.length > 0,
-      turnServerCount: turnServers.length
-    });
-    console.log('Full ICE Server Configuration:', configuration.iceServers);
-    
-    // Log TURN server info
-    if (turnServers.length > 0) {
-      console.log('🔍 TURN Server Details:');
-      turnServers.forEach((server, index) => {
-        console.log(`  TURN ${index + 1}:`, {
-          urls: server.urls,
-          username: server.username,
-          hasCredential: !!server.credential
-        });
-      });
-      
-      // Test TURN server connectivity
-      testTurnConnectivity();
-    }
-  }, []);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isRemoteVideoOff, setIsRemoteVideoOff] = useState(false);
+  const [callStatus, setCallStatus] = useState('idle'); // idle, calling, connected, ended
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [iceConnectionState, setIceConnectionState] = useState('new');
+  const [peerConnectionState, setPeerConnectionState] = useState('new');
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [turnServersWorking, setTurnServersWorking] = useState(true);
+  const [currentConfig, setCurrentConfig] = useState(configuration);
 
-  // Test TURN server connectivity
-  const testTurnConnectivity = () => {
-    console.log('🧪 Testing TURN server connectivity...');
-    const testConfig = {
-      iceServers: getWorkingTurnServers()
-    };
-    
-    const testPC = new RTCPeerConnection(testConfig);
-    let turnCandidateFound = false;
-    
-    testPC.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log('Test candidate:', event.candidate.candidate);
-        if (event.candidate.candidate.includes('typ relay')) {
-          console.log('✅ TURN candidate found in test!');
-          turnCandidateFound = true;
-        }
-      } else {
-        console.log('Test ICE gathering completed');
-        if (!turnCandidateFound) {
-          console.warn('⚠️ No TURN candidates in test - servers may be unreachable');
-        }
-        testPC.close();
-      }
-    };
-    
-    // Create a dummy offer to trigger ICE gathering
-    testPC.createOffer()
-      .then(offer => testPC.setLocalDescription(offer))
-      .catch(err => console.error('Test error:', err));
-  };
+  const localVideoRef = useRef();
+  const remoteVideoRef = useRef();
+  const peerConnectionRef = useRef();
+  const localStreamRef = useRef();
+  const { userDetails } = useProfile();
+  const { ws, sendMessage } = useWebSocket();
+  const { currentCallInfo } = useVideoCall();
 
   useEffect(() => {
     if (isOpen) {
@@ -879,6 +822,63 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       }
     }
   }, [remoteStream]);
+
+  // Log TURN server configuration for debugging
+  useEffect(() => {
+    const turnServers = getWorkingTurnServers();
+    console.log('TURN Server Configuration:', {
+      hasTurnServers: turnServers.length > 0,
+      turnServerCount: turnServers.length
+    });
+    console.log('Full ICE Server Configuration:', configuration.iceServers);
+    
+    // Log TURN server info
+    if (turnServers.length > 0) {
+      console.log('🔍 TURN Server Details:');
+      turnServers.forEach((server, index) => {
+        console.log(`  TURN ${index + 1}:`, {
+          urls: server.urls,
+          username: server.username,
+          hasCredential: !!server.credential
+        });
+      });
+      
+      // Test TURN server connectivity
+      testTurnConnectivity();
+    }
+  }, []);
+
+  // Test TURN server connectivity
+  const testTurnConnectivity = () => {
+    console.log('🧪 Testing TURN server connectivity...');
+    const testConfig = {
+      iceServers: getWorkingTurnServers()
+    };
+    
+    const testPC = new RTCPeerConnection(testConfig);
+    let turnCandidateFound = false;
+    
+    testPC.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('Test candidate:', event.candidate.candidate);
+        if (event.candidate.candidate.includes('typ relay')) {
+          console.log('✅ TURN candidate found in test!');
+          turnCandidateFound = true;
+        }
+      } else {
+        console.log('Test ICE gathering completed');
+        if (!turnCandidateFound) {
+          console.warn('⚠️ No TURN candidates in test - servers may be unreachable');
+        }
+        testPC.close();
+      }
+    };
+    
+    // Create a dummy offer to trigger ICE gathering
+    testPC.createOffer()
+      .then(offer => testPC.setLocalDescription(offer))
+      .catch(err => console.error('Test error:', err));
+  };
 
   if (!isOpen) return null;
 
