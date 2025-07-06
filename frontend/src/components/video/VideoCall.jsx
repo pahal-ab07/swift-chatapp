@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useProfile } from '../../context/profileContext';
 import { useWebSocket } from '../../context/websocketContext';
 import { useVideoCall } from '../../context/videoCallContext';
-import { twilioTurnUrls, twilioUsername, twilioCredential } from '../../../apiConfig';
+import { getWorkingTurnServers } from '../../../apiConfig';
 
 const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [localStream, setLocalStream] = useState(null);
@@ -28,7 +28,7 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const { ws, sendMessage } = useWebSocket();
   const { currentCallInfo } = useVideoCall();
 
-  // WebRTC configuration with Twilio TURN servers
+  // WebRTC configuration with working TURN servers
   const configuration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -36,22 +36,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
-      // Twilio TURN servers
-      ...(twilioTurnUrls.length > 0 ? [{
-        urls: twilioTurnUrls,
-        username: twilioUsername,
-        credential: twilioCredential
-      }] : []),
-      // Fallback free TURN servers (only if Twilio is not configured)
-      ...(twilioTurnUrls.length === 0 ? [{
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp'
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }] : [])
+      // Working TURN servers (Twilio if configured, otherwise free servers)
+      ...getWorkingTurnServers()
     ],
     iceCandidatePoolSize: 10,
     iceTransportPolicy: 'all',
@@ -61,71 +47,20 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
 
   // Log TURN server configuration for debugging
   useEffect(() => {
+    const turnServers = getWorkingTurnServers();
     console.log('TURN Server Configuration:', {
-      twilioTurnUrls,
-      twilioUsername: twilioUsername ? '***' : 'not set',
-      twilioCredential: twilioCredential ? '***' : 'not set',
-      hasTurnServers: twilioTurnUrls.length > 0
+      hasTurnServers: turnServers.length > 0
     });
     console.log('Full ICE Server Configuration:', configuration.iceServers);
     
-    // Log detailed TURN server info for debugging
-    if (twilioTurnUrls.length > 0) {
+    // Log TURN server info
+    if (turnServers.length > 0) {
       console.log('🔍 TURN Server Details:');
-      twilioTurnUrls.forEach((url, index) => {
-        console.log(`  TURN ${index + 1}: ${url}`);
+      turnServers.forEach((server, index) => {
+        console.log(`  TURN ${index + 1}:`, server);
       });
-      console.log(`  Username: ${twilioUsername}`);
-      console.log(`  Credential: ${twilioCredential ? '***' : 'not set'}`);
-      
-      // Test TURN server connectivity
-      testTurnServer();
-    } else {
-      console.warn('⚠️ No TURN servers configured!');
     }
-  }, [twilioTurnUrls, twilioUsername, twilioCredential]);
-
-  // Test TURN server connectivity
-  const testTurnServer = async () => {
-    try {
-      console.log('🧪 Testing TURN server connectivity...');
-      const testConnection = new RTCPeerConnection({
-        iceServers: [{
-          urls: twilioTurnUrls,
-          username: twilioUsername,
-          credential: twilioCredential
-        }]
-      });
-
-      let turnCandidateFound = false;
-      testConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log('Test ICE candidate:', event.candidate.candidate);
-          if (event.candidate.candidate.includes('typ relay')) {
-            console.log('✅ TURN candidate generated in test!');
-            turnCandidateFound = true;
-          }
-        } else {
-          console.log('Test ICE gathering completed');
-          if (!turnCandidateFound) {
-            console.error('❌ No TURN candidates generated in test!');
-            console.error('This indicates a problem with your TURN server configuration.');
-          }
-        }
-      };
-
-      // Create a dummy offer to trigger ICE gathering
-      const offer = await testConnection.createOffer();
-      await testConnection.setLocalDescription(offer);
-      
-      // Clean up after 5 seconds
-      setTimeout(() => {
-        testConnection.close();
-      }, 5000);
-    } catch (error) {
-      console.error('Error testing TURN server:', error);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -331,9 +266,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
           console.log('Current TURN configuration:', {
-            hasTurnServers: twilioTurnUrls.length > 0,
-            turnUrls: twilioTurnUrls,
-            hasCredentials: !!(twilioUsername && twilioCredential)
+            hasTurnServers: getWorkingTurnServers().length > 0,
+            turnUrls: getWorkingTurnServers()
           });
           
           // Log current connection statistics for debugging
@@ -552,9 +486,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         if (state === 'failed' || state === 'disconnected') {
           console.error('ICE connection failed or disconnected');
           console.log('Current TURN configuration:', {
-            hasTurnServers: twilioTurnUrls.length > 0,
-            turnUrls: twilioTurnUrls,
-            hasCredentials: !!(twilioUsername && twilioCredential)
+            hasTurnServers: getWorkingTurnServers().length > 0,
+            turnUrls: getWorkingTurnServers()
           });
           
           // Log current connection statistics for debugging
