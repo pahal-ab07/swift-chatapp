@@ -230,8 +230,15 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             protocol: event.candidate.protocol,
             address: event.candidate.address,
             port: event.candidate.port,
-            usernameFragment: event.candidate.usernameFragment
+            usernameFragment: event.candidate.usernameFragment,
+            candidate: event.candidate.candidate?.substring(0, 100) + '...' // Log first 100 chars
           });
+          
+          // Check if this is a TURN candidate
+          if (event.candidate.candidate && event.candidate.candidate.includes('typ relay')) {
+            console.log('🎯 TURN candidate generated successfully!');
+          }
+          
           sendMessage({
             type: 'ice-candidate',
             candidate: {
@@ -243,6 +250,18 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           });
         } else {
           console.log('ICE candidate gathering completed');
+          // Log final ICE gathering state
+          peerConnection.getStats().then(stats => {
+            let candidateCount = { host: 0, srflx: 0, relay: 0 };
+            stats.forEach(report => {
+              if (report.type === 'local-candidate') {
+                if (report.candidateType === 'host') candidateCount.host++;
+                else if (report.candidateType === 'srflx') candidateCount.srflx++;
+                else if (report.candidateType === 'relay') candidateCount.relay++;
+              }
+            });
+            console.log('Final ICE candidate counts:', candidateCount);
+          });
         }
       };
 
@@ -259,6 +278,18 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             turnUrls: twilioTurnUrls,
             hasCredentials: !!(twilioUsername && twilioCredential)
           });
+          
+          // Log current connection statistics for debugging
+          if (peerConnection.getStats) {
+            peerConnection.getStats().then(stats => {
+              console.log('Connection statistics:', stats);
+              stats.forEach(report => {
+                if (report.type === 'candidate-pair' && report.state === 'failed') {
+                  console.error('Failed candidate pair:', report);
+                }
+              });
+            }).catch(err => console.error('Error getting stats:', err));
+          }
           
           if (state === 'failed' && retryCount < 3 && !isRetrying) {
             setIsRetrying(true);
@@ -288,6 +319,13 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           setIsRetrying(false);
         } else if (state === 'checking') {
           console.log('ICE connection checking - attempting to establish connection...');
+          // Add a timeout for the checking state
+          setTimeout(() => {
+            if (peerConnection.iceConnectionState === 'checking') {
+              console.warn('ICE connection stuck in checking state for too long');
+              toast.info('Connection taking longer than expected...');
+            }
+          }, 10000); // 10 second timeout
         }
       };
 
@@ -413,8 +451,15 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             protocol: event.candidate.protocol,
             address: event.candidate.address,
             port: event.candidate.port,
-            usernameFragment: event.candidate.usernameFragment
+            usernameFragment: event.candidate.usernameFragment,
+            candidate: event.candidate.candidate?.substring(0, 100) + '...' // Log first 100 chars
           });
+          
+          // Check if this is a TURN candidate
+          if (event.candidate.candidate && event.candidate.candidate.includes('typ relay')) {
+            console.log('🎯 TURN candidate generated successfully!');
+          }
+          
           sendMessage({
             type: 'ice-candidate',
             candidate: {
@@ -426,6 +471,18 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           });
         } else {
           console.log('ICE candidate gathering completed');
+          // Log final ICE gathering state
+          peerConnection.getStats().then(stats => {
+            let candidateCount = { host: 0, srflx: 0, relay: 0 };
+            stats.forEach(report => {
+              if (report.type === 'local-candidate') {
+                if (report.candidateType === 'host') candidateCount.host++;
+                else if (report.candidateType === 'srflx') candidateCount.srflx++;
+                else if (report.candidateType === 'relay') candidateCount.relay++;
+              }
+            });
+            console.log('Final ICE candidate counts:', candidateCount);
+          });
         }
       };
 
@@ -442,6 +499,18 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             turnUrls: twilioTurnUrls,
             hasCredentials: !!(twilioUsername && twilioCredential)
           });
+          
+          // Log current connection statistics for debugging
+          if (peerConnection.getStats) {
+            peerConnection.getStats().then(stats => {
+              console.log('Connection statistics:', stats);
+              stats.forEach(report => {
+                if (report.type === 'candidate-pair' && report.state === 'failed') {
+                  console.error('Failed candidate pair:', report);
+                }
+              });
+            }).catch(err => console.error('Error getting stats:', err));
+          }
           
           if (state === 'failed' && retryCount < 3 && !isRetrying) {
             setIsRetrying(true);
@@ -471,6 +540,13 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           setIsRetrying(false);
         } else if (state === 'checking') {
           console.log('ICE connection checking - attempting to establish connection...');
+          // Add a timeout for the checking state
+          setTimeout(() => {
+            if (peerConnection.iceConnectionState === 'checking') {
+              console.warn('ICE connection stuck in checking state for too long');
+              toast.info('Connection taking longer than expected...');
+            }
+          }, 10000); // 10 second timeout
         }
       };
 
