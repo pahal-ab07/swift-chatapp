@@ -14,6 +14,8 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const [isRemoteVideoOff, setIsRemoteVideoOff] = useState(false);
   const [callStatus, setCallStatus] = useState('idle'); // idle, calling, connected, ended
   const [isInitialized, setIsInitialized] = useState(false);
+  const [iceConnectionState, setIceConnectionState] = useState('new');
+  const [peerConnectionState, setPeerConnectionState] = useState('new');
 
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
@@ -23,12 +25,23 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
   const { ws, sendMessage } = useWebSocket();
   const { currentCallInfo } = useVideoCall();
 
-  // WebRTC configuration
+  // WebRTC configuration with TURN servers for better connectivity
   const configuration = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-    ]
+      // Add TURN servers for better connectivity across different networks
+      {
+        urls: [
+          'turn:openrelay.metered.ca:80',
+          'turn:openrelay.metered.ca:443',
+          'turn:openrelay.metered.ca:443?transport=tcp'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceCandidatePoolSize: 10
   };
 
   useEffect(() => {
@@ -195,6 +208,45 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         }
       };
 
+      // Handle ICE connection state changes
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        setIceConnectionState(state);
+        console.log('ICE connection state changed:', state);
+        
+        if (state === 'failed' || state === 'disconnected') {
+          console.error('ICE connection failed or disconnected');
+          toast.error('Connection lost. Please try again.');
+          // Optionally attempt to restart ICE
+          if (state === 'failed') {
+            console.log('Attempting to restart ICE...');
+            peerConnection.restartIce();
+          }
+        }
+      };
+
+      // Handle peer connection state changes
+      peerConnection.onconnectionstatechange = () => {
+        const state = peerConnection.connectionState;
+        setPeerConnectionState(state);
+        console.log('Peer connection state changed:', state);
+        
+        if (state === 'failed') {
+          console.error('Peer connection failed');
+          toast.error('Call connection failed. Please try again.');
+          cleanupCall();
+          onClose();
+        } else if (state === 'connected') {
+          console.log('Peer connection established successfully');
+          toast.success('Call connected!');
+        }
+      };
+
+      // Handle signaling state changes
+      peerConnection.onsignalingstatechange = () => {
+        console.log('Signaling state changed:', peerConnection.signalingState);
+      };
+
       // Handle remote stream
       peerConnection.ontrack = (event) => {
         console.log('Received remote stream:', event.streams[0]);
@@ -233,16 +285,6 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
             }
           }
         }, 100);
-      };
-
-      // Add connection state change handler
-      peerConnection.onconnectionstatechange = () => {
-        console.log('Peer connection state changed:', peerConnection.connectionState);
-      };
-
-      // Add ICE connection state change handler
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE connection state changed:', peerConnection.iceConnectionState);
       };
 
       // Create and send offer
@@ -309,6 +351,45 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         }
       };
 
+      // Handle ICE connection state changes
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        setIceConnectionState(state);
+        console.log('ICE connection state changed:', state);
+        
+        if (state === 'failed' || state === 'disconnected') {
+          console.error('ICE connection failed or disconnected');
+          toast.error('Connection lost. Please try again.');
+          // Optionally attempt to restart ICE
+          if (state === 'failed') {
+            console.log('Attempting to restart ICE...');
+            peerConnection.restartIce();
+          }
+        }
+      };
+
+      // Handle peer connection state changes
+      peerConnection.onconnectionstatechange = () => {
+        const state = peerConnection.connectionState;
+        setPeerConnectionState(state);
+        console.log('Peer connection state changed:', state);
+        
+        if (state === 'failed') {
+          console.error('Peer connection failed');
+          toast.error('Call connection failed. Please try again.');
+          cleanupCall();
+          onClose();
+        } else if (state === 'connected') {
+          console.log('Peer connection established successfully');
+          toast.success('Call connected!');
+        }
+      };
+
+      // Handle signaling state changes
+      peerConnection.onsignalingstatechange = () => {
+        console.log('Signaling state changed:', peerConnection.signalingState);
+      };
+
       // Handle remote stream
       peerConnection.ontrack = (event) => {
         console.log('Received remote stream:', event.streams[0]);
@@ -322,41 +403,6 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
         }
         
         setRemoteStream(event.streams[0]);
-        
-        // Use setTimeout to ensure the video element is ready
-        setTimeout(() => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.load(); // Prepare the video for playback
-            remoteVideoRef.current.srcObject = event.streams[0];
-            console.log('Set remote video srcObject');
-            // Handle play promise
-            const playPromise = remoteVideoRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  // Playback started
-                })
-                .catch(e => {
-                  console.error('Error playing remote video:', e);
-                  if (e.name === 'AbortError') {
-                    console.log('Video play was interrupted, this is normal during connection setup');
-                  } else {
-                    toast.error('Failed to display remote video');
-                  }
-                });
-            }
-          }
-        }, 100);
-      };
-
-      // Add connection state change handler
-      peerConnection.onconnectionstatechange = () => {
-        console.log('Peer connection state changed:', peerConnection.connectionState);
-      };
-
-      // Add ICE connection state change handler
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE connection state changed:', peerConnection.iceConnectionState);
       };
 
       // Set remote description and create answer
@@ -712,6 +758,18 @@ const VideoCall = ({ isOpen, onClose, selectedUserId, selectedUserName }) => {
           <button onClick={toggleScreenShare} className="px-4 py-2 bg-gray-700 text-white rounded">
             {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
           </button>
+        </div>
+
+        {/* Connection Status */}
+        <div className="text-center mb-4">
+          <div className="text-sm text-gray-300">
+            ICE: {iceConnectionState} | Peer: {peerConnectionState}
+          </div>
+          {(iceConnectionState === 'failed' || peerConnectionState === 'failed') && (
+            <div className="text-red-400 text-sm mt-1">
+              Connection failed. Please check your network and try again.
+            </div>
+          )}
         </div>
       </div>
     </div>
