@@ -9,6 +9,7 @@ import Nav from "../components/chat/Nav";
 import OnlineUsersList from "../components/chat/OnlineUserList";
 import TopBar from "../components/chat/TopBar";
 import VideoCall from "../components/video/VideoCall";
+import IncomingCall from "../components/video/IncomingCall";
 import { useAuth } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
 
@@ -19,10 +20,13 @@ const ChatHome = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const { userDetails } = useProfile();
-  const { ws, sendMessage } = useWebSocket();
+  const { ws, sendMessage, incomingCall, setIncomingCall } = useWebSocket();
   const { isInCall, setIsInCall, currentCallInfo } = useVideoCall();
   const { isAuthenticated, checkAuth } = useAuth();
   const navigate = useNavigate();
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const [videoCallUrl, setVideoCallUrl] = useState(null);
+
   useEffect(() => {
     if (ws) {
       ws.addEventListener("message", handleMessage);
@@ -142,6 +146,19 @@ const ChatHome = () => {
       navigate("/");
     }
   }, []);
+
+  // Handle accepting the call
+  const handleAcceptCall = () => {
+    setVideoCallUrl(incomingCall.roomUrl);
+    setIsVideoCallOpen(true);
+    setIncomingCall(null);
+  };
+
+  // Handle rejecting the call
+  const handleRejectCall = () => {
+    setIncomingCall(null);
+  };
+
   return (
     <div className="flex h-screen w-screen bg-background overflow-hidden">
       <Nav />
@@ -182,8 +199,19 @@ const ChatHome = () => {
         <VideoCall
           isOpen={isInCall}
           onClose={() => setIsInCall(false)}
-          selectedUserId={currentCallInfo.userId}
-          selectedUserName={currentCallInfo.userName}
+          myPeerId={`peer_${userDetails?._id}`}
+          remotePeerId={currentCallInfo.peerId}
+        />
+      )}
+
+      {/* Incoming Call Popup */}
+      {incomingCall && (
+        <IncomingCall
+          isOpen={!!incomingCall}
+          callerName={incomingCall.from}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+          onClose={handleRejectCall}
         />
       )}
     </div>

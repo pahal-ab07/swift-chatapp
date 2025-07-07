@@ -1,10 +1,28 @@
 import React, { useState } from 'react';
 import VideoCall from './VideoCall';
+import { useWebSocket } from '../../context/websocketContext';
+import { useProfile } from '../../context/profileContext';
+
+function generatePeerId(userId) {
+  // Use userId or a random string for PeerJS
+  return userId ? `peer_${userId}` : `peer_${Math.random().toString(36).substr(2, 9)}`;
+}
 
 const VideoCallButton = ({ selectedUserId, selectedUserName }) => {
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const { sendMessage } = useWebSocket();
+  const { userDetails } = useProfile();
+  const myPeerId = generatePeerId(userDetails?._id);
+  const remotePeerId = generatePeerId(selectedUserId);
 
   const handleVideoCall = () => {
+    // Send call-invite to the other user with our peer ID
+    sendMessage({
+      type: 'call-invite',
+      to: selectedUserId,
+      from: userDetails?.username || userDetails?.name || 'Unknown',
+      peerId: myPeerId,
+    });
     setIsVideoCallOpen(true);
   };
 
@@ -24,8 +42,8 @@ const VideoCallButton = ({ selectedUserId, selectedUserName }) => {
         <VideoCall
           isOpen={isVideoCallOpen}
           onClose={() => setIsVideoCallOpen(false)}
-          selectedUserId={selectedUserId}
-          selectedUserName={selectedUserName}
+          myPeerId={myPeerId}
+          remotePeerId={remotePeerId}
         />
       )}
     </>

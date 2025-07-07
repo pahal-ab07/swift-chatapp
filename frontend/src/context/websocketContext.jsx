@@ -9,6 +9,7 @@ export const WebSocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const { userDetails } = useProfile();
   const reconnectTimeoutRef = useRef(null);
+  const [incomingCall, setIncomingCall] = useState(null);
 
   const connectWebSocket = () => {
     console.log('Attempting to connect WebSocket to:', socketUrl);
@@ -46,6 +47,20 @@ export const WebSocketProvider = ({ children }) => {
 
     websocket.onerror = (error) => {
       console.error('WebSocket error:', error);
+    };
+
+    websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'call-invite') {
+          setIncomingCall({
+            from: data.from,
+            roomUrl: data.roomUrl
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
     };
 
     // Set the WebSocket immediately so it's available
@@ -88,7 +103,9 @@ export const WebSocketProvider = ({ children }) => {
   const value = {
     ws,
     isConnected,
-    sendMessage
+    sendMessage,
+    incomingCall,
+    setIncomingCall
   };
 
   return (

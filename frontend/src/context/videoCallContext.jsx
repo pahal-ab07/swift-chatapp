@@ -22,19 +22,13 @@ export const VideoCallProvider = ({ children }) => {
         try {
           const data = JSON.parse(event.data);
           
-          if (data.type === 'video-call-offer' && !isInCall) {
-            console.log('Incoming call from:', data.fromName);
+          if (data.type === 'call-invite' && !isInCall) {
             setIncomingCall({
               callerId: data.from,
-              callerName: data.fromName,
-              offer: data.offer
+              callerName: data.fromName || data.from,
+              peerId: data.peerId
             });
-            
-            // Show notification
-            toast.success(`Incoming call from ${data.fromName}`, {
-              duration: 10000,
-              icon: '📞'
-            });
+            toast.success(`Incoming call from ${data.fromName || data.from}`);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -51,11 +45,10 @@ export const VideoCallProvider = ({ children }) => {
 
   const acceptCall = () => {
     if (incomingCall) {
-      // Set current call info and open video call
       setCurrentCallInfo({
         userId: incomingCall.callerId,
         userName: incomingCall.callerName,
-        offer: incomingCall.offer
+        peerId: incomingCall.peerId
       });
       setIsInCall(true);
       setIncomingCall(null);
