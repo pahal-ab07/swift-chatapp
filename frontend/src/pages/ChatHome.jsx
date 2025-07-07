@@ -213,7 +213,7 @@ const ChatHome = () => {
           isOpen={isInCall}
           onClose={() => setIsInCall(false)}
           myPeerId={`peer_${userDetails?._id}`}
-          remotePeerId={currentCallInfo.peerId}
+          {...(currentCallInfo.isCaller ? { remotePeerId: currentCallInfo.peerId } : {})}
         />
       )}
       {connectionError && (

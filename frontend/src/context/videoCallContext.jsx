@@ -48,7 +48,8 @@ export const VideoCallProvider = ({ children }) => {
       setCurrentCallInfo({
         userId: incomingCall.callerId,
         userName: incomingCall.callerName,
-        peerId: incomingCall.peerId
+        peerId: incomingCall.peerId,
+        isCaller: false
       });
       setIsInCall(true);
       setIncomingCall(null);
