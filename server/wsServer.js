@@ -165,6 +165,24 @@ const createWebSocketServer = (server) => {
               from: connection.userId
             }));
           }
+        } else if (messageData.type === 'call-invite') {
+          // Forward call-invite to the target user for PeerJS
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            targetUser.socketId.send(JSON.stringify({
+              type: 'call-invite',
+              from: connection.userId,
+              fromName: connection.username,
+              peerId: messageData.peerId
+            }));
+          } else {
+            // Optionally notify the caller that the user is not available
+            connection.send(JSON.stringify({
+              type: 'video-call-rejected',
+              from: messageData.to,
+              message: 'User is not available'
+            }));
+          }
         } else {
           // Handle regular chat messages
           const { recipient, text } = messageData;
