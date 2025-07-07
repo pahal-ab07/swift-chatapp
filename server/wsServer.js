@@ -183,6 +183,15 @@ const createWebSocketServer = (server) => {
               message: 'User is not available'
             }));
           }
+        } else if (messageData.type === 'peer-ready') {
+          // Forward peer-ready to the intended caller
+          const targetUser = videoUsers.get(messageData.to);
+          if (targetUser && targetUser.socketId) {
+            targetUser.socketId.send(JSON.stringify({
+              type: 'peer-ready',
+              peerId: messageData.peerId
+            }));
+          }
         } else {
           // Handle regular chat messages
           const { recipient, text } = messageData;

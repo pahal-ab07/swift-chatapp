@@ -15,7 +15,26 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
   const [callEnded, setCallEnded] = useState(false);
   const [callError, setCallError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
-  const { sendMessage } = useWebSocket();
+  const [calleeReady, setCalleeReady] = useState(false);
+  const { sendMessage, ws } = useWebSocket();
+
+  // Store caller/callee role
+  const isCaller = !!remotePeerId;
+
+  // Listen for 'peer-ready' message if caller
+  useEffect(() => {
+    if (!isCaller || !ws) return;
+    const handler = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'peer-ready' && data.peerId === remotePeerId) {
+          setCalleeReady(true);
+        }
+      } catch {}
+    };
+    ws.addEventListener('message', handler);
+    return () => ws.removeEventListener('message', handler);
+  }, [isCaller, ws, remotePeerId]);
 
   // Ensure PeerJS instance is created as soon as isOpen is true
   useEffect(() => {
@@ -70,44 +89,13 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       p.on('open', () => {
         peerOpen = true;
         console.log('[VideoCall] PeerJS open:', myPeerId);
-        // Only the caller should call
-        if (remotePeerId && !hasCalled) {
-          hasCalled = true;
-          const doCall = (attempt = 1) => {
-            console.log(`[VideoCall] Attempting to call remote peer (${remotePeerId}), try #${attempt}`);
-            outgoingCall = p.call(remotePeerId, localStream);
-            setCallObj(outgoingCall);
-            let callFailed = false;
-            outgoingCall.on('stream', remoteStream => {
-              if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = remoteStream;
-              }
-            });
-            outgoingCall.on('close', () => {
-              setCallEnded(true);
-              if (onClose) onClose();
-            });
-            outgoingCall.on('error', (err) => {
-              callFailed = true;
-              console.error('[VideoCall] Call error:', err);
-              if (attempt < MAX_RETRIES) {
-                setRetryCount(attempt);
-                retryTimeout = setTimeout(() => doCall(attempt + 1), RETRY_DELAY_MS);
-              } else {
-                setCallError('Could not connect to the other user. Please try again later.');
-                setCallEnded(true);
-                if (onClose) onClose();
-              }
-            });
-            outgoingCall.on('disconnected', () => {
-              setCallEnded(true);
-              if (onClose) onClose();
-            });
-            callCleanup = () => {
-              outgoingCall.close();
-            };
-          };
-          doCall(1);
+        // Callee: notify caller that peer is ready
+        if (!isCaller && ws && remotePeerId) {
+          sendMessage({ type: 'peer-ready', peerId: myPeerId, to: remotePeerId });
+        }
+        // Caller: only call after callee is ready
+        if (isCaller && remotePeerId) {
+          // Wait for calleeReady state
         }
       });
       p.on('error', (err) => {
@@ -124,7 +112,54 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       if (retryTimeout) clearTimeout(retryTimeout);
     };
     // eslint-disable-next-line
-  }, [isOpen, myPeerId, remotePeerId]);
+  }, [isOpen, myPeerId, remotePeerId, ws]);
+
+  // Caller: attempt call only after calleeReady
+  useEffect(() => {
+    if (!isCaller || !calleeReady || !peer || !stream) return;
+    let outgoingCall;
+    let callCleanup;
+    let hasCalled = false;
+    let retryTimeout = null;
+    const doCall = (attempt = 1) => {
+      if (hasCalled) return;
+      hasCalled = true;
+      outgoingCall = peer.call(remotePeerId, stream);
+      setCallObj(outgoingCall);
+      outgoingCall.on('stream', remoteStream => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+        }
+      });
+      outgoingCall.on('close', () => {
+        setCallEnded(true);
+        if (onClose) onClose();
+      });
+      outgoingCall.on('error', (err) => {
+        if (attempt < MAX_RETRIES) {
+          setRetryCount(attempt);
+          retryTimeout = setTimeout(() => doCall(attempt + 1), RETRY_DELAY_MS);
+        } else {
+          setCallError('Could not connect to the other user. Please try again later.');
+          setCallEnded(true);
+          if (onClose) onClose();
+        }
+      });
+      outgoingCall.on('disconnected', () => {
+        setCallEnded(true);
+        if (onClose) onClose();
+      });
+      callCleanup = () => {
+        outgoingCall.close();
+      };
+    };
+    doCall(1);
+    return () => {
+      if (callCleanup) callCleanup();
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+    // eslint-disable-next-line
+  }, [isCaller, calleeReady, peer, stream, remotePeerId, onClose]);
 
   // Optionally, listen for call-ended WebSocket message and clean up (if you add this to backend)
   // useEffect(() => {
@@ -156,6 +191,11 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       {retryCount > 0 && !callEnded && (
         <div style={{ position: 'absolute', top: 120, left: 0, right: 0, textAlign: 'center', color: 'yellow' }}>
           Retrying... (Attempt {retryCount + 1} of {MAX_RETRIES})
+        </div>
+      )}
+      {isCaller && !calleeReady && !callEnded && (
+        <div style={{ position: 'absolute', top: 160, left: 0, right: 0, textAlign: 'center', color: 'yellow' }}>
+          Waiting for the other user to be ready...
         </div>
       )}
     </div>
