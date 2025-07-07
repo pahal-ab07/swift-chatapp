@@ -19,19 +19,20 @@ const IncomingCall = ({
       
       // Auto-reject after 30 seconds
       timeoutRef.current = setTimeout(() => {
-        onReject();
+        handleReject();
       }, 30000);
 
       return () => {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
         }
+        ringtone.stop(); // Always stop on unmount
       };
     } else {
       // Stop ringtone when modal closes
       ringtone.stop();
     }
-  }, [isOpen, onReject]);
+  }, [isOpen]);
 
   const handleAccept = () => {
     ringtone.stop();

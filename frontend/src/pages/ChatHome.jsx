@@ -26,6 +26,7 @@ const ChatHome = () => {
   const navigate = useNavigate();
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [videoCallUrl, setVideoCallUrl] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
 
   useEffect(() => {
     if (ws) {
@@ -159,6 +160,18 @@ const ChatHome = () => {
     setIncomingCall(null);
   };
 
+  useEffect(() => {
+    if (!ws) return;
+    const handleWsClose = () => {
+      setConnectionError('Connection lost. Please refresh or try again later.');
+      setIsInCall(false);
+    };
+    ws.addEventListener('close', handleWsClose);
+    return () => {
+      ws.removeEventListener('close', handleWsClose);
+    };
+  }, [ws]);
+
   return (
     <div className="flex h-screen w-screen bg-background overflow-hidden">
       <Nav />
@@ -195,13 +208,21 @@ const ChatHome = () => {
       </main>
 
       {/* Video Call Component */}
-      {isInCall && currentCallInfo && (
+      {isInCall && currentCallInfo && !connectionError && (
         <VideoCall
           isOpen={isInCall}
           onClose={() => setIsInCall(false)}
           myPeerId={`peer_${userDetails?._id}`}
           remotePeerId={currentCallInfo.peerId}
         />
+      )}
+      {connectionError && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50">
+          <div className="bg-white p-8 rounded shadow text-center">
+            <h2 className="text-xl font-bold mb-4">{connectionError}</h2>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => window.location.reload()}>Reload</button>
+          </div>
+        </div>
       )}
 
       {/* Incoming Call Popup */}

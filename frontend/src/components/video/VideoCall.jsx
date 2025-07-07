@@ -8,19 +8,21 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
   const [peer, setPeer] = useState(null);
   const [callObj, setCallObj] = useState(null);
   const [stream, setStream] = useState(null);
+  const [callEnded, setCallEnded] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
-    // 1. Get user media
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(localStream => {
-      setStream(localStream);
+    let p, localStream, outgoingCall;
+    let destroyed = false;
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(ls => {
+      localStream = ls;
+      setStream(ls);
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.srcObject = ls;
       }
-      // 2. Create PeerJS instance
-      const p = new Peer(myPeerId, { debug: 2 });
+      p = new Peer(myPeerId, { debug: 2 });
       setPeer(p);
-      // 3. Listen for incoming calls
+      // Callee: listen for incoming calls
       p.on('call', call => {
         call.answer(localStream);
         setCallObj(call);
@@ -29,22 +31,39 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
             remoteVideoRef.current.srcObject = remoteStream;
           }
         });
+        call.on('close', () => {
+          setCallEnded(true);
+          if (onClose) onClose();
+        });
+        call.on('error', () => {
+          setCallEnded(true);
+          if (onClose) onClose();
+        });
       });
-      // 4. If remotePeerId is provided, call them
+      // Caller: only if remotePeerId is provided
       if (remotePeerId) {
-        const call = p.call(remotePeerId, localStream);
-        setCallObj(call);
-        call.on('stream', remoteStream => {
+        outgoingCall = p.call(remotePeerId, localStream);
+        setCallObj(outgoingCall);
+        outgoingCall.on('stream', remoteStream => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = remoteStream;
           }
         });
+        outgoingCall.on('close', () => {
+          setCallEnded(true);
+          if (onClose) onClose();
+        });
+        outgoingCall.on('error', () => {
+          setCallEnded(true);
+          if (onClose) onClose();
+        });
       }
     });
     return () => {
-      if (peer) peer.destroy();
+      destroyed = true;
+      if (p) p.destroy();
       if (callObj) callObj.close();
-      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
     };
     // eslint-disable-next-line
   }, [isOpen, myPeerId, remotePeerId]);
@@ -57,6 +76,11 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
         <video ref={localVideoRef} autoPlay muted playsInline style={{ width: 320, marginRight: 16, background: '#222', borderRadius: 8 }} />
         <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 320, background: '#222', borderRadius: 8 }} />
       </div>
+      {callEnded && (
+        <div style={{ position: 'absolute', top: 80, left: 0, right: 0, textAlign: 'center', color: 'white' }}>
+          Call ended
+        </div>
+      )}
     </div>
   );
 } 
