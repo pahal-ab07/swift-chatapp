@@ -20,6 +20,7 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
 
   // Store caller/callee role
   const isCaller = !!remotePeerId;
+  console.log('[VideoCall] Rendered with:', { isOpen, myPeerId, remotePeerId, isCaller });
 
   // Listen for 'peer-ready' message if caller
   useEffect(() => {
@@ -27,10 +28,14 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
     const handler = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('[VideoCall] WS message (caller):', data);
         if (data.type === 'peer-ready' && data.peerId === remotePeerId) {
           setCalleeReady(true);
+          console.log('[VideoCall] Callee is ready:', remotePeerId);
         }
-      } catch {}
+      } catch (err) {
+        console.error('[VideoCall] Error parsing WS message (caller):', err);
+      }
     };
     ws.addEventListener('message', handler);
     return () => ws.removeEventListener('message', handler);
@@ -60,24 +65,28 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       p.on('call', call => {
         if (hasCalled) return; // Prevent double answering
         hasCalled = true;
-        console.log('[VideoCall] Incoming call, answering...');
+        console.log('[VideoCall] Incoming call, answering...', { myPeerId, remotePeerId });
         call.answer(localStream);
         setCallObj(call);
         call.on('stream', remoteStream => {
+          console.log('[VideoCall] Received remote stream (callee)');
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = remoteStream;
           }
         });
         call.on('close', () => {
+          console.log('[VideoCall] Call closed (callee)');
           setCallEnded(true);
           if (onClose) onClose();
         });
         call.on('error', (err) => {
+          console.error('[VideoCall] Call error (callee):', err);
           setCallEnded(true);
           setCallError('Call error: ' + err.message);
           if (onClose) onClose();
         });
         call.on('disconnected', () => {
+          console.log('[VideoCall] Call disconnected (callee)');
           setCallEnded(true);
           if (onClose) onClose();
         });
@@ -88,17 +97,19 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       // PeerJS open event
       p.on('open', () => {
         peerOpen = true;
-        console.log('[VideoCall] PeerJS open:', myPeerId);
+        console.log('[VideoCall] PeerJS open:', myPeerId, 'isCaller:', isCaller, 'remotePeerId:', remotePeerId);
         // Callee: notify caller that peer is ready
         if (!isCaller && ws && remotePeerId) {
+          console.log('[VideoCall] Callee sending peer-ready to:', remotePeerId);
           sendMessage({ type: 'peer-ready', peerId: myPeerId, to: remotePeerId });
         }
         // Caller: only call after callee is ready
         if (isCaller && remotePeerId) {
-          // Wait for calleeReady state
+          console.log('[VideoCall] Caller waiting for calleeReady');
         }
       });
       p.on('error', (err) => {
+        console.error('[VideoCall] PeerJS error:', err);
         setCallError('PeerJS error: ' + err.message);
         setCallEnded(true);
         if (onClose) onClose();
@@ -110,6 +121,7 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
       if (callCleanup) callCleanup();
       if (localStream) localStream.getTracks().forEach(track => track.stop());
       if (retryTimeout) clearTimeout(retryTimeout);
+      console.log('[VideoCall] Cleanup complete');
     };
     // eslint-disable-next-line
   }, [isOpen, myPeerId, remotePeerId, ws]);
@@ -121,21 +133,25 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
     let callCleanup;
     let hasCalled = false;
     let retryTimeout = null;
+    console.log('[VideoCall] Caller attempting call to:', remotePeerId);
     const doCall = (attempt = 1) => {
       if (hasCalled) return;
       hasCalled = true;
       outgoingCall = peer.call(remotePeerId, stream);
       setCallObj(outgoingCall);
       outgoingCall.on('stream', remoteStream => {
+        console.log('[VideoCall] Received remote stream (caller)');
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
         }
       });
       outgoingCall.on('close', () => {
+        console.log('[VideoCall] Call closed (caller)');
         setCallEnded(true);
         if (onClose) onClose();
       });
       outgoingCall.on('error', (err) => {
+        console.error('[VideoCall] Call error (caller):', err);
         if (attempt < MAX_RETRIES) {
           setRetryCount(attempt);
           retryTimeout = setTimeout(() => doCall(attempt + 1), RETRY_DELAY_MS);
@@ -146,6 +162,7 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
         }
       });
       outgoingCall.on('disconnected', () => {
+        console.log('[VideoCall] Call disconnected (caller)');
         setCallEnded(true);
         if (onClose) onClose();
       });
@@ -157,6 +174,7 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
     return () => {
       if (callCleanup) callCleanup();
       if (retryTimeout) clearTimeout(retryTimeout);
+      console.log('[VideoCall] Caller cleanup complete');
     };
     // eslint-disable-next-line
   }, [isCaller, calleeReady, peer, stream, remotePeerId, onClose]);

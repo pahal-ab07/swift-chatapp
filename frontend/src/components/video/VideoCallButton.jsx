@@ -18,12 +18,19 @@ const VideoCallButton = ({ selectedUserId, selectedUserName }) => {
   const remotePeerId = generatePeerId(selectedUserId);
 
   const handleVideoCall = () => {
+    console.log('[VideoCallButton] Sending call-invite to:', selectedUserId, 'with myPeerId:', myPeerId);
     // Send call-invite to the other user with our peer ID
     sendMessage({
       type: 'call-invite',
       to: selectedUserId,
       from: userDetails?.username || userDetails?.name || 'Unknown',
       peerId: myPeerId,
+    });
+    console.log('[VideoCallButton] Setting currentCallInfo and isInCall', {
+      userId: selectedUserId,
+      userName: selectedUserName,
+      peerId: remotePeerId,
+      isCaller: true
     });
     setCurrentCallInfo({
       userId: selectedUserId,

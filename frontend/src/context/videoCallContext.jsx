@@ -21,8 +21,9 @@ export const VideoCallProvider = ({ children }) => {
       const handleMessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+          console.log('[VideoCallContext] WS message:', data);
           if (data.type === 'call-invite' && !isInCall) {
+            console.log('[VideoCallContext] Incoming call-invite:', data);
             setIncomingCall({
               callerId: data.from,
               callerName: data.fromName || data.from,
@@ -31,7 +32,7 @@ export const VideoCallProvider = ({ children }) => {
             toast.success(`Incoming call from ${data.fromName || data.from}`);
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('[VideoCallContext] Error parsing WebSocket message:', error);
         }
       };
 
@@ -45,6 +46,7 @@ export const VideoCallProvider = ({ children }) => {
 
   const acceptCall = () => {
     if (incomingCall) {
+      console.log('[VideoCallContext] Accepting call from:', incomingCall);
       setCurrentCallInfo({
         userId: incomingCall.callerId,
         userName: incomingCall.callerName,
@@ -58,6 +60,7 @@ export const VideoCallProvider = ({ children }) => {
 
   const rejectCall = () => {
     if (incomingCall) {
+      console.log('[VideoCallContext] Rejecting call from:', incomingCall);
       sendMessage({
         type: 'video-call-rejected',
         to: incomingCall.callerId,
@@ -69,6 +72,7 @@ export const VideoCallProvider = ({ children }) => {
 
   const endCall = () => {
     if (currentCallInfo) {
+      console.log('[VideoCallContext] Ending call with:', currentCallInfo);
       sendMessage({
         type: 'end-call',
         to: currentCallInfo.userId
