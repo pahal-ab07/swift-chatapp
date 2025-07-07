@@ -84,6 +84,7 @@ export const VideoCallProvider = ({ children }) => {
     isInCall,
     setIsInCall,
     currentCallInfo,
+    setCurrentCallInfo,
     acceptCall,
     rejectCall,
     endCall,
