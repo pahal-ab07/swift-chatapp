@@ -5,8 +5,8 @@ import { useWebSocket } from '../../context/websocketContext';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1500;
 
-// Props: isOpen, onClose, myPeerId, remotePeerId
-export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
+// Props: isOpen, onClose, myPeerId, remotePeerId, isCaller
+export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId, isCaller }) {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const [peer, setPeer] = useState(null);
@@ -18,8 +18,6 @@ export default function VideoCall({ isOpen, onClose, myPeerId, remotePeerId }) {
   const [calleeReady, setCalleeReady] = useState(false);
   const { sendMessage, ws } = useWebSocket();
 
-  // Store caller/callee role
-  const isCaller = !!remotePeerId;
   console.log('[VideoCall] Rendered with:', { isOpen, myPeerId, remotePeerId, isCaller });
 
   // Listen for 'peer-ready' message if caller
